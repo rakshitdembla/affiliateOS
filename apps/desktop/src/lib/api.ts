@@ -2,7 +2,7 @@ import type { ApiErrorBody, ActivityItem, HealthResponse, OverviewResponse } fro
 import { getToken } from "./secrets";
 
 const URL_KEY = "affiliateos.apiUrl";
-const DEFAULT_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8787";
+const DEFAULT_URL = import.meta.env.VITE_API_URL ?? "https://affiliateos-api.rakshitdembla.workers.dev";
 
 export const getApiUrl = (): string => {
   try { return localStorage.getItem(URL_KEY) ?? DEFAULT_URL; } catch { return DEFAULT_URL; }

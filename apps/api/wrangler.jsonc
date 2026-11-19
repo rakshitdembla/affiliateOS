@@ -14,8 +14,8 @@
     {
       "binding": "DB",
       "database_name": "affiliateos",
-      // Placeholder: used for local dev only. Replace with the real ID from `wrangler d1 create affiliateos` before deploying.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      // Created with `wrangler d1 create affiliateos` (an ID is an identifier, not a secret).
+      "database_id": "46ff819b-a565-4e88-a529-9f3f1e7e008a",
       "migrations_dir": "migrations"
     }
   ],

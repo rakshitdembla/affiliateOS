@@ -48,7 +48,17 @@ async function call<T = any>(url: string, init: RequestInit = {}): Promise<T> {
   return body as T;
 }
 
-const GRAPH = "https://graph.instagram.com";
+export interface Hosts { graph: string; oauth: string }
+export const OFFICIAL_HOSTS: Hosts = { graph: "https://graph.instagram.com", oauth: "https://api.instagram.com" };
+
+/**
+ * Test seam for end-to-end tests: IG_GRAPH_BASE may point at a local mock, but only loopback URLs are honoured,
+ * so a misconfiguration can never send tokens or messages anywhere except Meta's official hosts.
+ */
+export function hostsFor(env: { IG_GRAPH_BASE?: string }): Hosts {
+  const o = env.IG_GRAPH_BASE?.trim().replace(/\/+$/, "");
+  return o && /^http:\/\/(localhost|127\.0\.0\.1):\d{2,5}$/.test(o) ? { graph: o, oauth: o } : OFFICIAL_HOSTS;
+}
 const withParams = (base: string, params: Record<string, string | undefined>): string => {
   const u = new URL(base);
   for (const [k, v] of Object.entries(params)) if (v !== undefined) u.searchParams.set(k, v);
@@ -64,9 +74,9 @@ export function authorizeUrl(o: { appId: string; redirectUri: string; state: str
 }
 
 /** Authorization code → short-lived token. Response may be wrapped in `data: [...]`. */
-export async function exchangeCode(o: { appId: string; appSecret: string; redirectUri: string; code: string }) {
+export async function exchangeCode(h: Hosts, o: { appId: string; appSecret: string; redirectUri: string; code: string }) {
   const form = new URLSearchParams({ client_id: o.appId, client_secret: o.appSecret, grant_type: "authorization_code", redirect_uri: o.redirectUri, code: o.code });
-  const b = await call("https://api.instagram.com/oauth/access_token", { method: "POST", body: form });
+  const b = await call(`${h.oauth}/oauth/access_token`, { method: "POST", body: form });
   const d = Array.isArray(b?.data) ? b.data[0] : b;
   if (!d?.access_token || d.user_id == null) throw new GraphError("unknown", "Unexpected token response from Instagram");
   const perms: string[] = Array.isArray(d.permissions) ? d.permissions : typeof d.permissions === "string" ? d.permissions.split(",") : [];
@@ -74,36 +84,36 @@ export async function exchangeCode(o: { appId: string; appSecret: string; redire
 }
 
 /** Short-lived → long-lived (≈60 days). */
-export async function exchangeLongLived(appSecret: string, shortToken: string) {
-  const b = await call(withParams(`${GRAPH}/access_token`, { grant_type: "ig_exchange_token", client_secret: appSecret, access_token: shortToken }));
+export async function exchangeLongLived(h: Hosts, appSecret: string, shortToken: string) {
+  const b = await call(withParams(`${h.graph}/access_token`, { grant_type: "ig_exchange_token", client_secret: appSecret, access_token: shortToken }));
   if (!b?.access_token) throw new GraphError("unknown", "Unexpected long-lived token response from Instagram");
   return { accessToken: String(b.access_token), expiresIn: Number(b.expires_in) || 0 };
 }
 
 /** Refresh a long-lived token (must be ≥24h old and unexpired); valid for another 60 days. */
-export async function refreshLongLived(token: string) {
-  const b = await call(withParams(`${GRAPH}/refresh_access_token`, { grant_type: "ig_refresh_token", access_token: token }));
+export async function refreshLongLived(h: Hosts, token: string) {
+  const b = await call(withParams(`${h.graph}/refresh_access_token`, { grant_type: "ig_refresh_token", access_token: token }));
   if (!b?.access_token) throw new GraphError("unknown", "Unexpected refresh response from Instagram");
   return { accessToken: String(b.access_token), expiresIn: Number(b.expires_in) || 0 };
 }
 
 export interface Profile { id: string; userId: string | null; username: string | null; accountType: string | null; profilePictureUrl: string | null }
 
-export async function getProfile(token: string, version: string): Promise<Profile> {
-  const b = await call(withParams(`${GRAPH}/${version}/me`, { fields: "user_id,username,account_type,profile_picture_url", access_token: token }));
+export async function getProfile(h: Hosts, token: string, version: string): Promise<Profile> {
+  const b = await call(withParams(`${h.graph}/${version}/me`, { fields: "user_id,username,account_type,profile_picture_url", access_token: token }));
   return {
     id: String(b.id), userId: b.user_id != null ? String(b.user_id) : null, username: b.username ?? null,
     accountType: b.account_type ?? null, profilePictureUrl: b.profile_picture_url ?? null,
   };
 }
 
-export async function subscribeWebhooks(token: string, version: string, fields: string[]): Promise<void> {
-  const b = await call(withParams(`${GRAPH}/${version}/me/subscribed_apps`, { subscribed_fields: fields.join(","), access_token: token }), { method: "POST" });
+export async function subscribeWebhooks(h: Hosts, token: string, version: string, fields: string[]): Promise<void> {
+  const b = await call(withParams(`${h.graph}/${version}/me/subscribed_apps`, { subscribed_fields: fields.join(","), access_token: token }), { method: "POST" });
   if (b?.success !== true) throw new GraphError("unknown", "Instagram did not confirm the webhook subscription");
 }
 
-export async function getSubscribedFields(token: string, version: string): Promise<string[]> {
-  const b = await call(withParams(`${GRAPH}/${version}/me/subscribed_apps`, { access_token: token }));
+export async function getSubscribedFields(h: Hosts, token: string, version: string): Promise<string[]> {
+  const b = await call(withParams(`${h.graph}/${version}/me/subscribed_apps`, { access_token: token }));
   const fields = new Set<string>();
   for (const app of Array.isArray(b?.data) ? b.data : []) {
     const f = app?.subscribed_fields;
@@ -112,14 +122,14 @@ export async function getSubscribedFields(token: string, version: string): Promi
   return [...fields].filter(Boolean);
 }
 
-export async function unsubscribeWebhooks(token: string, version: string): Promise<void> {
-  await call(withParams(`${GRAPH}/${version}/me/subscribed_apps`, { access_token: token }), { method: "DELETE" });
+export async function unsubscribeWebhooks(h: Hosts, token: string, version: string): Promise<void> {
+  await call(withParams(`${h.graph}/${version}/me/subscribed_apps`, { access_token: token }), { method: "DELETE" });
 }
 
 export interface MediaItem { id: string; caption: string | null; mediaType: string | null; mediaProductType: string | null; permalink: string | null; thumbnailUrl: string | null; timestamp: string | null }
 
-export async function listMedia(token: string, version: string, o: { after?: string; limit?: number } = {}) {
-  const b = await call(withParams(`${GRAPH}/${version}/me/media`, {
+export async function listMedia(h: Hosts, token: string, version: string, o: { after?: string; limit?: number } = {}) {
+  const b = await call(withParams(`${h.graph}/${version}/me/media`, {
     fields: "id,caption,media_type,media_product_type,permalink,thumbnail_url,media_url,timestamp",
     limit: String(Math.min(Math.max(o.limit ?? 24, 1), 50)), after: o.after, access_token: token,
   }));
@@ -129,4 +139,67 @@ export async function listMedia(token: string, version: string, o: { after?: str
     thumbnailUrl: m.thumbnail_url ?? (m.media_type === "IMAGE" ? m.media_url ?? null : null), timestamp: m.timestamp ?? null,
   }));
   return { items, after: (b?.paging?.next && b?.paging?.cursors?.after) ? String(b.paging.cursors.after) : null };
+}
+
+export type SendResult =
+  | { kind: "sent"; messageId: string; recipientId: string | null; status: number }
+  /** No definite answer from Instagram: the reply may or may not have been delivered. Never retried blindly. */
+  | { kind: "uncertain"; reason: string; status: number | null }
+  /** Instagram answered with an explicit error: the message was not sent. */
+  | { kind: "rejected"; error: GraphError; retryAfterSeconds: number | null };
+
+/** Max "estimated_time_to_regain_access" (minutes) from X-Business-Use-Case-Usage, in seconds. */
+function regainSeconds(res: Response): number | null {
+  try {
+    const v = JSON.parse(res.headers.get("x-business-use-case-usage") ?? "null");
+    let max = 0;
+    for (const arr of Object.values(v ?? {})) for (const u of (arr as any[]) ?? []) max = Math.max(max, Number(u?.estimated_time_to_regain_access) || 0);
+    return max > 0 ? max * 60 : null;
+  } catch { return null; }
+}
+
+/** Private reply to a comment (Meta: POST /<IG_ID>/messages with recipient.comment_id; one reply per comment, within 7 days). */
+export async function sendPrivateReply(h: Hosts, o: { token: string; version: string; igUserId: string; commentId: string; text: string; timeoutMs?: number }): Promise<SendResult> {
+  let res: Response;
+  try {
+    res = await fetch(`${h.graph}/${o.version}/${encodeURIComponent(o.igUserId)}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${o.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ recipient: { comment_id: o.commentId }, message: { text: o.text } }),
+      signal: AbortSignal.timeout(o.timeoutMs ?? 15_000),
+    });
+  } catch {
+    return { kind: "uncertain", reason: "No response from Instagram (network error or timeout). The reply may or may not have been delivered.", status: null };
+  }
+  const raw = await res.text().catch(() => "");
+  let body: any = null;
+  try { body = raw ? JSON.parse(quoteBigInts(raw)) : null; } catch { /* non-JSON */ }
+  if (res.ok && body?.message_id) return { kind: "sent", messageId: String(body.message_id), recipientId: body.recipient_id != null ? String(body.recipient_id) : null, status: res.status };
+  if (body?.error) return { kind: "rejected", error: classifyGraphError(res.status, body.error), retryAfterSeconds: regainSeconds(res) };
+  return { kind: "uncertain", reason: `Unexpected response from Instagram (HTTP ${res.status}). The reply may or may not have been delivered.`, status: res.status };
+}
+
+export interface ConversationMessage { id: string; createdTime: number | null; fromId: string | null; fromUsername: string | null; text: string | null }
+
+/**
+ * Conversations API (Meta): find the conversation with a person by Instagram-scoped id, then read recent messages.
+ * Only the 20 most recent messages' details are available. Used to check whether an uncertain reply was delivered.
+ */
+export async function recentMessagesWith(h: Hosts, o: { token: string; version: string; userId: string; since: number }): Promise<{ messages: ConversationMessage[]; truncated: boolean } | "no_conversation"> {
+  const conv = await call(withParams(`${h.graph}/${o.version}/me/conversations`, { platform: "instagram", user_id: o.userId, access_token: o.token }));
+  const convId = Array.isArray(conv?.data) && conv.data[0]?.id ? String(conv.data[0].id) : null;
+  if (!convId) return "no_conversation";
+  const list = await call(withParams(`${h.graph}/${o.version}/${encodeURIComponent(convId)}`, { fields: "messages", access_token: o.token }));
+  const toTime = (t: unknown): number | null => (t == null ? null : /^\d+$/.test(String(t)) ? Number(t) * 1000 : Date.parse(String(t)) || null);
+  const recent = (Array.isArray(list?.messages?.data) ? list.messages.data : [])
+    .map((m: any) => ({ id: String(m.id), t: toTime(m.created_time) }))
+    .filter((m: { t: number | null }) => m.t === null || m.t >= o.since);
+  const ids = recent.slice(0, 20);
+  const out: ConversationMessage[] = [];
+  for (const m of ids) {
+    const d = await call(withParams(`${h.graph}/${o.version}/${encodeURIComponent(m.id)}`, { fields: "id,created_time,from,to,message", access_token: o.token }));
+    out.push({ id: String(d.id ?? m.id), createdTime: toTime(d.created_time) ?? m.t, fromId: d.from?.id != null ? String(d.from.id) : null, fromUsername: d.from?.username ?? null, text: typeof d.message === "string" ? d.message : null });
+    await new Promise((r) => setTimeout(r, 500)); // Conversations API: 2 calls/second per account
+  }
+  return { messages: out, truncated: recent.length > 20 };
 }

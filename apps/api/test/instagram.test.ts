@@ -91,7 +91,8 @@ describe("webhook deliveries", () => {
     const res = await deliver(commentChanges("17900000000000001"));
     expect(res.status).toBe(200);
     const [r] = await rows();
-    expect(r).toMatchObject({ dedupe_key: "comment:17900000000000001", event_type: "comments", process_status: "received", ig_user_id: IG_ID, media_id: "18000000000000123", comment_id: "17900000000000001", from_username: "shopper_1", comment_text: "LINK", signature_key: "instagram", delivery_count: 1 });
+    // Stored, then immediately processed: with no automation on this post it is ignored (with the reason recorded).
+    expect(r).toMatchObject({ dedupe_key: "comment:17900000000000001", event_type: "comments", process_status: "ignored", error: "No active automation for this post", ig_user_id: IG_ID, media_id: "18000000000000123", comment_id: "17900000000000001", from_username: "shopper_1", comment_text: "LINK", signature_key: "instagram", delivery_count: 1 });
   });
 
   it("accepts the Instagram-Login sample shape (entry.field/value) and keeps big numeric ids exact", async () => {
@@ -288,7 +289,7 @@ describe("account management", () => {
     await deliver(commentChanges("e2", "link pls"));
     const r: any = await (await admin("/api/v1/instagram/events")).json();
     expect(r.items.map((i: any) => i.commentId)).toEqual(["e2", "e1"]);
-    expect(r.items[0]).toMatchObject({ fromUsername: "shopper_1", text: "link pls", status: "received" });
+    expect(r.items[0]).toMatchObject({ fromUsername: "shopper_1", text: "link pls", status: "ignored", error: "No active automation for this post" });
   });
 });
 

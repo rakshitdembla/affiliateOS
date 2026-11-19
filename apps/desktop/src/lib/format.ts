@@ -22,3 +22,17 @@ export const ERROR_HELP: Record<string, string> = {
   adapter_not_implemented: "This platform isn't implemented yet.",
   parse_failed: "No product details could be read from the page.",
 };
+
+export function timeAgo(iso: string | null, now = Date.now()): string {
+  if (!iso) return "—";
+  const s = Math.round((now - Date.parse(iso)) / 1000);
+  if (s < 0) return `in ${fmtDuration(-s)}`;
+  if (s < 10) return "just now";
+  return `${fmtDuration(s)} ago`;
+}
+export function fmtDuration(sec: number): string {
+  if (sec < 60) return `${sec}s`;
+  if (sec < 3600) return `${Math.round(sec / 60)}m`;
+  if (sec < 86_400) return `${Math.round(sec / 360) / 10}h`;
+  return `${Math.round(sec / 8640) / 10}d`;
+}

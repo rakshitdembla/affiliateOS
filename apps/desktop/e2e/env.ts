@@ -7,4 +7,6 @@ export const E2E_IG = {
   IG_APP_SECRET: "e2e-instagram-app-secret",
   IG_WEBHOOK_VERIFY_TOKEN: "e2e-verify-token",
   TOKEN_ENCRYPTION_KEY: "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY",
+  IG_GRAPH_BASE: "http://localhost:8799",
 } as const;
+export const MOCK_META = "http://localhost:8799";

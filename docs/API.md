@@ -70,3 +70,33 @@ Public:
 | `POST /oauth/instagram/data-deletion` | Meta `signed_request`; deletes data, returns `{url, confirmation_code}` |
 | `GET /oauth/instagram/deletion-status?code=` | Deletion confirmation page |
 | `GET /privacy` | Privacy policy |
+
+## Automations (Phase 5) — Bearer
+
+| Method | Path | Description |
+|---|---|---|
+| GET/POST | `/api/v1/automations` | List (with matched/sent/pending/failed stats) / create. Body: `mediaId, reelName, mediaPermalink?, collectionId, keywords[], matchMode (word\|contains\|exact), messageTemplate, isActive`. Activation requires a published collection and a valid template (`[COLLECTION_URL]` required; ≤ 1000 bytes rendered). Response includes `warnings[]` |
+| GET/PATCH/DELETE | `/api/v1/automations/:id` | Read / partial update (same validation) / delete (queued jobs are kept) |
+
+## DM queue — Bearer
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/v1/queue/sync` | `{workerId?, engineStatus?, version?}` → recovers stale work, turns received comments into jobs, records the engine heartbeat, returns `QueueStats` |
+| GET | `/api/v1/queue/stats` | Counts by status, due now, next retry, attempts in the last hour, hourly cap, account state |
+| POST | `/api/v1/queue/claim` | `{workerId, limit≤20}` → `{jobs}` (atomic, 5-minute lease, oldest first) |
+| POST | `/api/v1/queue/release` | `{workerId}` → returns this engine's unstarted claims |
+| POST | `/api/v1/queue/jobs/:id/send` | `{workerId, policy?}` → `SendResponse` (`sent`, `retryable`, `permanent`, `ineligible`, `uncertain`, `blocked` + `stopEngine`, `rate_limited` + `retryAfterSeconds`). `409` if not claimed by this engine or already started |
+| GET | `/api/v1/queue/jobs?status=&q=&automationId=&before=&limit=` | List (newest first) + stats |
+| GET | `/api/v1/queue/jobs/:id` | Job + attempt history |
+| POST | `/api/v1/queue/jobs/:id/reconcile` | Uncertain only: check delivery via the Conversations API |
+| POST | `/api/v1/queue/jobs/:id/retry` | Failed/skipped/uncertain (uncertain needs `{confirm:true}`); refused past the 7-day window |
+| POST | `/api/v1/queue/jobs/:id/skip` · `/mark-sent` | Manual resolution (not for in-flight jobs) |
+| GET | `/api/v1/queue/engines` | Recent engine heartbeats |
+
+## Logs — Bearer
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/v1/logs?level=error,warn&module=&code=&entity=&q=&from=&to=&before=&limit=` | Filtered entries (newest first) + facets (modules, codes) |
+| POST | `/api/v1/logs` | Desktop engine events (`module` is always `engine`) |

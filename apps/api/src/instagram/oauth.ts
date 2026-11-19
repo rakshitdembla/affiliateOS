@@ -4,7 +4,7 @@ import { encryptSecret } from "../crypto";
 import { log, logThrottled } from "../logger";
 import { renderMessagePage } from "../storefront-render";
 import { igConfig } from "./config";
-import { exchangeCode, exchangeLongLived, getProfile, GraphError, subscribeWebhooks } from "./graph";
+import { exchangeCode, exchangeLongLived, getProfile, GraphError, hostsFor, subscribeWebhooks } from "./graph";
 
 const STATE_RE = /^[A-Za-z0-9_-]{20,100}$/;
 
@@ -43,9 +43,10 @@ oauthPublic.get("/oauth/instagram/callback", async (c) => {
   if (cfg.missing.length) return page(c, "Not configured", "The server is missing Instagram configuration. See the Instagram page in AffiliateOS.", 503);
 
   try {
-    const short = await exchangeCode({ appId: env.IG_APP_ID!.trim(), appSecret: env.IG_APP_SECRET!, redirectUri: cfg.redirectUri, code });
-    const long = await exchangeLongLived(env.IG_APP_SECRET!, short.accessToken);
-    const profile = await getProfile(long.accessToken, cfg.version);
+    const h = hostsFor(env);
+    const short = await exchangeCode(h, { appId: env.IG_APP_ID!.trim(), appSecret: env.IG_APP_SECRET!, redirectUri: cfg.redirectUri, code });
+    const long = await exchangeLongLived(h, env.IG_APP_SECRET!, short.accessToken);
+    const profile = await getProfile(h, long.accessToken, cfg.version);
     const igUserId = profile.userId ?? short.userId;
     const tokenEnc = await encryptSecret(long.accessToken, env.TOKEN_ENCRYPTION_KEY!, igUserId);
     const expiresAt = long.expiresIn > 0 ? new Date(Date.now() + long.expiresIn * 1000).toISOString() : null;
@@ -53,7 +54,7 @@ oauthPublic.get("/oauth/instagram/callback", async (c) => {
     let subscribed = 0;
     let lastError: string | null = null;
     try {
-      await subscribeWebhooks(long.accessToken, cfg.version, ["comments"]);
+      await subscribeWebhooks(h, long.accessToken, cfg.version, ["comments"]);
       subscribed = 1;
     } catch (e) {
       lastError = `Webhook subscription failed: ${(e as Error).message}`;

@@ -1,6 +1,8 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { LayoutDashboard, Package, Layers, AtSign, Zap, Inbox, BarChart3, ScrollText, Settings } from "lucide-react";
 import { cn } from "../lib/utils";
+import { useEngine } from "../engine";
+import { ENGINE_LABEL } from "../lib/queueLabels";
 
 const NAV = [
   { to: "/", label: "Overview", icon: LayoutDashboard },
@@ -15,6 +17,8 @@ const NAV = [
 ];
 
 export function Layout() {
+  const snap = useEngine();
+  const dot = { idle: "bg-ok", sending: "bg-ok", cooldown: "bg-warn", blocked: "bg-warn", offline: "bg-bad", paused: "bg-stone-400", stopped: "bg-stone-300" }[snap.state];
   return (
     <div className="flex h-full">
       <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-surface px-3 py-4">
@@ -33,7 +37,11 @@ export function Layout() {
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto px-2 text-xs text-muted">v{__APP_VERSION__}</div>
+        <NavLink to="/queue" className="mt-auto flex items-center gap-2 rounded-md px-2 py-2 text-xs text-muted hover:bg-stone-100" title={snap.reason ?? ENGINE_LABEL[snap.state]}>
+          <span className={cn("h-2 w-2 shrink-0 rounded-full", dot)} aria-hidden />
+          <span className="truncate">Queue: {ENGINE_LABEL[snap.state]}</span>
+        </NavLink>
+        <div className="px-2 pt-1 text-xs text-muted">v{__APP_VERSION__}</div>
       </aside>
       <main className="min-w-0 flex-1 overflow-y-auto p-8">
         <Outlet />

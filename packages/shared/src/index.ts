@@ -1,4 +1,5 @@
 /** Contracts shared by the Worker API and the desktop app. */
+export * from "./automation";
 
 export interface HealthResponse {
   status: "ok" | "degraded";
@@ -18,6 +19,7 @@ export interface OverviewResponse {
   clicks: number;
   pendingMessages: number;
   failedMessages: number;
+  uncertainMessages: number;
   sentToday: number;
   instagram: { connected: boolean; username: string | null };
   lastEventAt: string | null;
@@ -168,4 +170,103 @@ export interface WebhookEventSummary {
   receivedAt: string;
   deliveryCount: number;
   signatureKey: string | null;
+}
+
+// ---- Automations & DM queue (Phase 5) ----
+import type { MatchMode } from "./automation";
+export type DmStatus = "pending" | "processing" | "sent" | "failed" | "skipped" | "uncertain";
+export const DM_STATUSES: DmStatus[] = ["pending", "processing", "sent", "failed", "skipped", "uncertain"];
+/** Why a job ended where it did: sent, temporarily failed, permanently rejected, ineligible, duplicate, or unknown outcome. */
+export type DmOutcome = "sent" | "retryable" | "permanent" | "ineligible" | "duplicate" | "uncertain";
+
+export interface Automation {
+  id: string;
+  mediaId: string;
+  reelName: string;
+  mediaPermalink: string | null;
+  collectionId: string;
+  collectionName: string | null;
+  collectionSlug: string | null;
+  collectionPublished: boolean;
+  keywords: string[];
+  matchMode: MatchMode;
+  messageTemplate: string;
+  isActive: boolean;
+  lastRunAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  stats: { matched: number; sent: number; pending: number; failed: number };
+}
+
+export interface DmJob {
+  id: string;
+  commentId: string;
+  mediaId: string;
+  automationId: string | null;
+  reelName: string | null;
+  collectionId: string | null;
+  collectionName: string | null;
+  recipientId: string | null;
+  recipientUsername: string | null;
+  commentText: string | null;
+  message: string;
+  status: DmStatus;
+  outcome: DmOutcome | null;
+  attemptCount: number;
+  receivedAt: string;
+  processedAt: string | null;
+  lastAttemptAt: string | null;
+  nextRetryAt: string | null;
+  sentAt: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  claimedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DmAttempt {
+  id: string;
+  attemptedAt: string;
+  outcome: "sent" | "retryable" | "permanent" | "uncertain" | "ineligible";
+  httpStatus: number | null;
+  errorCode: string | null;
+  graphCode: number | null;
+  graphSubcode: number | null;
+  detail: string | null;
+  durationMs: number | null;
+  workerId: string | null;
+}
+
+export interface RetryPolicy { maxAttempts: number; baseDelaySeconds: number; maxDelaySeconds: number }
+
+export interface QueueStats {
+  counts: Record<DmStatus, number>;
+  dueNow: number;
+  nextRetryAt: string | null;
+  attemptsLastHour: number;
+  hourlyCap: number;
+  account: { connected: boolean; status: string | null; username: string | null };
+  ingested: { created: number; ignored: number };
+  serverTime: string;
+}
+
+export interface SendResponse {
+  outcome: "sent" | "retryable" | "permanent" | "ineligible" | "uncertain" | "blocked" | "rate_limited" | "not_claimed";
+  job: DmJob | null;
+  /** Present when every further send would fail the same way (or risk the account): the engine must stop. */
+  stopEngine?: { code: string; reason: string };
+  retryAfterSeconds?: number;
+  message?: string;
+}
+
+export interface LogItem {
+  id: string;
+  time: string;
+  level: "debug" | "info" | "warn" | "error";
+  module: string;
+  operation: string | null;
+  entityId: string | null;
+  code: string | null;
+  message: string;
 }

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Keep the DM queue engine running at normal speed while the window is in the background (opts out of App Nap). -->
+  <key>NSAppSleepDisabled</key>
+  <true/>
+</dict>
+</plist>

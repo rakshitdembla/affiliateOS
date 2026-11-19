@@ -11,6 +11,9 @@ import { igAdmin } from "./instagram/admin";
 import { oauthPublic } from "./instagram/oauth";
 import { webhooks } from "./instagram/webhooks";
 import { compliance } from "./instagram/compliance";
+import { queue } from "./queue/routes";
+import { automations } from "./automations";
+import { logs } from "./logs";
 
 export const app = new Hono<{ Bindings: Env }>();
 
@@ -73,20 +76,21 @@ api.get("/ping", (c) => c.json({ ok: true }));
 api.get("/overview", async (c) => {
   const db = c.env.DB;
   const count = async (sql: string): Promise<number> => ((await db.prepare(sql).first<{ n: number }>())?.n ?? 0);
-  const [products, collections, published, clicks, pending, failed, sentToday, ig, lastEvent] = await Promise.all([
+  const [products, collections, published, clicks, pending, failed, sentToday, ig, lastEvent, uncertain] = await Promise.all([
     count("SELECT COUNT(*) n FROM products"),
     count("SELECT COUNT(*) n FROM collections"),
     count("SELECT COUNT(*) n FROM collections WHERE is_published = 1"),
     count("SELECT COUNT(*) n FROM click_events WHERE is_bot = 0"),
     count("SELECT COUNT(*) n FROM dm_jobs WHERE status = 'pending'"),
     count("SELECT COUNT(*) n FROM dm_jobs WHERE status = 'failed'"),
-    count("SELECT COUNT(*) n FROM dm_jobs WHERE status = 'sent' AND updated_at >= date('now')"),
+    count("SELECT COUNT(*) n FROM dm_jobs WHERE status = 'sent' AND sent_at >= date('now')"),
     db.prepare("SELECT username FROM instagram_accounts WHERE status = 'connected' LIMIT 1").first<{ username: string | null }>(),
     db.prepare("SELECT MAX(received_at) t FROM webhook_events").first<{ t: string | null }>(),
+    count("SELECT COUNT(*) n FROM dm_jobs WHERE status = 'uncertain'"),
   ]);
   const body: OverviewResponse = {
     products, collections, publishedCollections: published, clicks,
-    pendingMessages: pending, failedMessages: failed, sentToday,
+    pendingMessages: pending, failedMessages: failed, uncertainMessages: uncertain, sentToday,
     instagram: { connected: !!ig, username: ig?.username ?? null },
     lastEventAt: lastEvent?.t ?? null,
   };
@@ -103,6 +107,9 @@ api.get("/activity", async (c) => {
 api.route("/products", products);
 api.route("/collections", collections);
 api.route("/instagram", igAdmin);
+api.route("/automations", automations);
+api.route("/queue", queue);
+api.route("/logs", logs);
 app.route("/api/v1", api);
 
 /** Public, immutable product images cached in R2. Keys are unguessable UUIDs. */

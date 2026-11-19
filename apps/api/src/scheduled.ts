@@ -3,7 +3,9 @@ import { isValidEncryptionKey } from "./crypto";
 import { log } from "./logger";
 import { accountToken } from "./instagram/account";
 import { saveRefreshedToken } from "./instagram/admin";
-import { GraphError, refreshLongLived } from "./instagram/graph";
+import { GraphError, hostsFor, refreshLongLived } from "./instagram/graph";
+import { recoverStaleJobs } from "./queue/engine";
+import { ingestEvents } from "./queue/ingest";
 
 const DAY = 86_400_000;
 /** Refresh when fewer than this many days remain (long-lived tokens last ~60 days and must be ≥24h old to refresh). */
@@ -26,7 +28,7 @@ export async function refreshDueTokens(env: Env, now = new Date()): Promise<{ ch
     const due = !Number.isFinite(expires) || expires - now.getTime() < REFRESH_WITHIN_DAYS * DAY;
     if (!due || now.getTime() - issued < DAY) continue;
     try {
-      const r = await refreshLongLived(await accountToken(env, a));
+      const r = await refreshLongLived(hostsFor(env), await accountToken(env, a));
       await saveRefreshedToken(env, a, r.accessToken, r.expiresIn);
       out.refreshed++;
     } catch (e) {
@@ -43,5 +45,7 @@ export async function refreshDueTokens(env: Env, now = new Date()): Promise<{ ch
 
 export async function runScheduled(env: Env): Promise<void> {
   await refreshDueTokens(env);
+  await recoverStaleJobs(env);
+  if (env.PUBLIC_BASE_URL) await ingestEvents(env, env.PUBLIC_BASE_URL.replace(/\/+$/, ""));
   await env.DB.prepare("DELETE FROM oauth_states WHERE expires_at < ?").bind(new Date(Date.now() - DAY).toISOString()).run();
 }

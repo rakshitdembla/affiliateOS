@@ -20,6 +20,7 @@ export default defineConfig({
   use: { baseURL: "http://localhost:1420", trace: "retain-on-failure" },
   projects: [{ name: "webkit", use: { ...devices["Desktop Safari"], viewport: { width: 1280, height: 820 } } }],
   webServer: [
+    { command: "node e2e/mock-meta.mjs", url: "http://localhost:8799/__health", reuseExistingServer: false, timeout: 30_000 },
     {
       command: `rm -rf .wrangler/e2e && pnpm exec wrangler d1 migrations apply affiliateos --local --persist-to .wrangler/e2e && pnpm exec wrangler dev --port 8787 --persist-to .wrangler/e2e --var ADMIN_API_TOKEN:${E2E_TOKEN} ${IG_VARS}`,
       cwd: "../api",

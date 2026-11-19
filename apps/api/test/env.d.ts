@@ -9,6 +9,7 @@ declare namespace Cloudflare {
     PUBLIC_BASE_URL?: string;
     IG_APP_ID?: string;
     IG_GRAPH_VERSION?: string;
+    IG_GRAPH_BASE?: string;
     PRIVACY_CONTACT?: string;
     IG_APP_SECRET?: string;
     META_APP_SECRET?: string;

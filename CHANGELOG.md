@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0 — Phase 5 (automations and DM queue)
+- Automations: reel ↔ keywords ↔ collection, match modes (whole word / contains / exact), message templates with [COLLECTION_URL], [COLLECTION_NAME], [USERNAME], validation before activation, stats. Matching and template logic shared by Worker and desktop.
+- DM queue: jobs created from comment webhooks (one per comment, duplicates per person marked), leased atomic claiming, server-performed sends with an attempt token (no double sends), outcome classification per Meta's error codes, bounded backoff with jitter, 700/hour cap, crash recovery, 7-day window handling, delivery checks for uncertain sends via the Conversations API, manual retry/skip/mark-sent. Migration 0006.
+- Desktop engine: auto-start, pacing, hourly budget, pause/resume (persisted), cooldowns, offline backoff, auto-pause on account-level problems; App Nap disabled.
+- Desktop: Automations, Message Queue (job details with attempt history) and Logs pages; queue status in the sidebar.
+- Tests: shared 18, API 146, desktop 36, E2E 10 (incl. full comment → reply pipeline against a mock Instagram API), Rust 2.
+
 ## 0.4.0 — Phase 4 (Instagram integration)
 - Business Login for Instagram: connect (single-use OAuth state), long-lived token stored AES-256-GCM encrypted, account status/check/refresh/disconnect, recent media listing.
 - Webhook receiver: handshake, HMAC signature verification (Instagram or Meta app secret), both payload shapes, dedupe with redelivery counts, malformed-payload retention, retry-friendly 503/500, throttled rejection logging.

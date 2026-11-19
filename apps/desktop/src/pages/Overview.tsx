@@ -47,7 +47,7 @@ export function Overview() {
         <Stat icon={Package} label="Products" value={num(o?.products)} />
         <Stat icon={Layers} label="Collections" value={num(o?.collections)} hint={o ? `${o.publishedCollections} published` : undefined} />
         <Stat icon={MousePointerClick} label="Total clicks" value={num(o?.clicks)} />
-        <Stat icon={Send} label="Pending DMs" value={num(o?.pendingMessages)} hint={o ? `${o.failedMessages} failed · ${o.sentToday} sent today` : undefined} />
+        <Stat icon={Send} label="Pending DMs" value={num(o?.pendingMessages)} hint={o ? `${o.sentToday} sent today · ${o.failedMessages} failed${o.uncertainMessages ? ` · ${o.uncertainMessages} uncertain` : ""}` : undefined} />
       </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">

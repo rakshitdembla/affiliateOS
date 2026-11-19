@@ -8,6 +8,8 @@ export interface Env {
   /** Instagram App ID (public). */
   IG_APP_ID?: string;
   IG_GRAPH_VERSION?: string;
+  /** E2E test seam only: loopback URL of a mock Instagram API (ignored unless http://localhost:<port>). */
+  IG_GRAPH_BASE?: string;
   /** Shown on the privacy policy page as the contact route. */
   PRIVACY_CONTACT?: string;
   // ---- Secrets (wrangler secret put …) ----

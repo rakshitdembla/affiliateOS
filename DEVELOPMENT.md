@@ -21,5 +21,6 @@ pnpm e2e         # end-to-end in WebKit; starts an isolated local Worker on :878
 cd apps/desktop/src-tauri && cargo test                 # Rust unit tests
 cd apps/desktop/src-tauri && cargo test -- --ignored    # also round-trips the real macOS Keychain (test entry, cleaned up)
 ```
-First E2E run: `pnpm --filter @affiliateos/desktop exec playwright install webkit`. Ports 8787 and 1420 must be free.
+E2E also starts a mock Instagram API on :8799 (`e2e/mock-meta.mjs`); the E2E Worker points at it via `IG_GRAPH_BASE`, which the Worker only honours for `http://localhost:<port>`, so no test can reach Meta or send a real message.
+First E2E run: `pnpm --filter @affiliateos/desktop exec playwright install webkit`. Ports 8787, 1420 and 8799 must be free.
 E2E replaces only the native Tauri layer (Keychain commands, opener) with an in-memory stub; everything else is real.

@@ -1,4 +1,4 @@
-import type { ApiErrorBody, ActivityItem, Collection, CollectionDetail, ExtractionResult, HealthResponse, InstagramMedia, InstagramStatus, WebhookEventSummary, OverviewResponse, Platform, Product, ProductList } from "@affiliateos/shared";
+import type { ApiErrorBody, ActivityItem, Collection, CollectionDetail, ExtractionResult, HealthResponse, InstagramMedia, InstagramStatus, WebhookEventSummary, Automation, DmAttempt, DmJob, DmStatus, LogItem, MatchMode, QueueStats, RetryPolicy, SendResponse, OverviewResponse, Platform, Product, ProductList } from "@affiliateos/shared";
 import { getToken } from "./secrets";
 
 const URL_KEY = "affiliateos.apiUrl";
@@ -47,6 +47,9 @@ export interface ProductInput {
   priceMinor?: number | null; currency?: string; canonicalUrl?: string | null;
   extractionStatus?: "success" | "partial" | "manual"; extractionError?: string | null;
 }
+export interface AutomationInput {
+  mediaId: string; reelName: string; mediaPermalink?: string | null; collectionId: string; keywords: string[]; matchMode: MatchMode; messageTemplate: string; isActive: boolean;
+}
 export interface ProductQuery { search?: string; platform?: string; status?: string; limit?: number; offset?: number }
 
 export const api = {
@@ -77,6 +80,35 @@ export const api = {
   disconnectInstagram: () => request<InstagramStatus>("/api/v1/instagram/disconnect", { method: "POST", timeoutMs: 25000 }),
   instagramMedia: (after?: string) => request<{ items: InstagramMedia[]; after: string | null }>(`/api/v1/instagram/media${after ? `?after=${encodeURIComponent(after)}` : ""}`, { timeoutMs: 25000 }),
   instagramEvents: () => request<{ items: WebhookEventSummary[] }>("/api/v1/instagram/events?limit=50"),
+  // ---- automations ----
+  listAutomations: () => request<{ items: Automation[] }>("/api/v1/automations"),
+  createAutomation: (b: AutomationInput) => request<Automation & { warnings: string[] }>("/api/v1/automations", { method: "POST", body: b }),
+  updateAutomation: (id: string, b: Partial<AutomationInput>) => request<Automation & { warnings: string[] }>(`/api/v1/automations/${id}`, { method: "PATCH", body: b }),
+  deleteAutomation: (id: string) => request<null>(`/api/v1/automations/${id}`, { method: "DELETE" }),
+  // ---- queue ----
+  queueSync: (b: { workerId: string; engineStatus: string; detail?: string; version?: string }) => request<QueueStats>("/api/v1/queue/sync", { method: "POST", body: b, timeoutMs: 20000 }),
+  queueClaim: (workerId: string, limit: number) => request<{ jobs: DmJob[] }>("/api/v1/queue/claim", { method: "POST", body: { workerId, limit } }),
+  queueRelease: (workerId: string) => request<{ released: number }>("/api/v1/queue/release", { method: "POST", body: { workerId } }),
+  /** 409 means "not yours / already handled": not an error for the engine. */
+  queueSend: async (id: string, workerId: string, policy: RetryPolicy): Promise<SendResponse> => {
+    try { return await request<SendResponse>(`/api/v1/queue/jobs/${id}/send`, { method: "POST", body: { workerId, policy }, timeoutMs: 40000 }); }
+    catch (e) { if (e instanceof ApiError && e.status === 409) return { outcome: "not_claimed", job: null, message: e.message }; throw e; }
+  },
+  queueJobs: (q: { status?: DmStatus | ""; q?: string; automationId?: string; limit?: number } = {}) => {
+    const sp = new URLSearchParams();
+    Object.entries(q).forEach(([k, v]) => v !== undefined && v !== "" && sp.set(k, String(v)));
+    return request<{ items: DmJob[]; stats: QueueStats }>(`/api/v1/queue/jobs?${sp}`);
+  },
+  queueJob: (id: string) => request<{ job: DmJob; attempts: DmAttempt[] }>(`/api/v1/queue/jobs/${id}`),
+  queueAction: (id: string, action: "retry" | "skip" | "mark-sent", confirm = false) => request<{ message: string; job: DmJob }>(`/api/v1/queue/jobs/${id}/${action}`, { method: "POST", body: { confirm } }),
+  queueReconcile: (id: string) => request<{ result: "sent" | "not_sent" | "unknown"; message: string; job: DmJob }>(`/api/v1/queue/jobs/${id}/reconcile`, { method: "POST", timeoutMs: 40000 }),
+  // ---- logs ----
+  logs: (q: { level?: string; module?: string; code?: string; entity?: string; q?: string; from?: string; to?: string; before?: string; limit?: number } = {}) => {
+    const sp = new URLSearchParams();
+    Object.entries(q).forEach(([k, v]) => v !== undefined && v !== "" && sp.set(k, String(v)));
+    return request<{ items: LogItem[]; facets: { modules: string[]; codes: string[] } }>(`/api/v1/logs?${sp}`);
+  },
+  engineLog: (e: { level: "info" | "warn" | "error"; operation: string; message: string; code?: string }) => request<unknown>("/api/v1/logs", { method: "POST", body: e }),
   deleteProduct: (id: string) => request<null>(`/api/v1/products/${id}`, { method: "DELETE" }),
   health: (o?: { baseUrl?: string }) => request<HealthResponse>("/health", { auth: false, ...o }),
   overview: (o?: { token?: string; baseUrl?: string }) => request<OverviewResponse>("/api/v1/overview", o),

@@ -5,6 +5,7 @@ import { clearToken, getToken, isTauri, setToken } from "../lib/secrets";
 import { Badge, Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { ConfirmDialog } from "../components/Dialog";
+import { engine } from "../engine";
 
 export function Settings() {
   const qc = useQueryClient();
@@ -27,6 +28,7 @@ export function Settings() {
         await api.overview({ token: token.trim(), baseUrl: clean });
         await setToken(token.trim());
         setHasToken(true); setTokenValue("");
+        engine.start();
       }
       setApiUrl(clean);
       await qc.invalidateQueries();
@@ -38,6 +40,7 @@ export function Settings() {
 
   async function remove() {
     setConfirmRemove(false);
+    await engine.stop();
     await clearToken(); setHasToken(false); await qc.invalidateQueries();
     setMsg({ tone: "ok", text: "Token removed." });
   }

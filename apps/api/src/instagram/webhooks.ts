@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import { fromHex, hmacSha256, quoteBigInts, sha256Hex, timingSafeEqualBytes, timingSafeEqualStr } from "../crypto";
 import { log, logThrottled } from "../logger";
-import { webhookSecrets } from "./config";
+import { igConfig, webhookSecrets } from "./config";
+import { ingestEvents } from "../queue/ingest";
 
 const MAX_BODY = 1_000_000;
 const MAX_TEXT = 2200;
@@ -124,6 +125,11 @@ webhooks.post("/webhooks/instagram", async (c) => {
   } catch (e) {
     await log(env, { level: "error", module: "webhook", operation: "store", code: "db_error", message: `Could not store webhook delivery (${rows.length} events); responded 500 so Meta retries: ${(e as Error).message}` });
     return c.text("Storage error", 500);
+  }
+  if (rows.some((r) => r.status === "received")) {
+    const work = ingestEvents(env, igConfig(env, c.req.url).base).catch((e) =>
+      log(env, { level: "error", module: "automation", operation: "ingest", code: "ingest_failed", message: `Creating DM jobs failed (will retry on next sync): ${(e as Error).message}` }));
+    try { c.executionCtx.waitUntil(work); } catch { await work; }
   }
   const malformed = rows.filter((r) => r.status === "malformed").length;
   if (malformed) await log(env, { level: "warn", module: "webhook", operation: "parse", code: "malformed", message: `Stored ${malformed} malformed webhook event(s) for review` });

@@ -97,7 +97,7 @@ export function Overview() {
         <Card>
           <div className="text-sm font-medium">Quick actions</div>
           <div className="mt-3 flex flex-col gap-2">
-            <Button variant="outline" disabled title="Available in Phase 2"><Plus size={14} /> Add product</Button>
+            <Link to="/products"><Button variant="outline" className="w-full"><Plus size={14} /> Add product</Button></Link>
             <Button variant="outline" disabled title="Available in Phase 3"><Plus size={14} /> New collection</Button>
             <Button variant="outline" disabled title="Available in Phase 4"><AtSign size={14} /> Connect Instagram</Button>
           </div>

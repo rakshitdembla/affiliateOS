@@ -4,13 +4,14 @@ import type { ActivityItem, HealthResponse, OverviewResponse } from "@affiliateo
 import type { Env } from "./env";
 import { requireAdmin } from "./auth";
 import { log } from "./logger";
+import { products } from "./products";
 
 export const app = new Hono<{ Bindings: Env }>();
 
 app.use("*", async (c, next) => {
   await next();
   c.header("X-Content-Type-Options", "nosniff");
-  c.header("Cache-Control", "no-store");
+  if (!c.res.headers.has("Cache-Control")) c.header("Cache-Control", "no-store");
 });
 
 app.use("/api/*", async (c, next) => {
@@ -90,7 +91,17 @@ api.get("/activity", async (c) => {
   return c.json({ items: results });
 });
 
+api.route("/products", products);
 app.route("/api/v1", api);
+
+/** Public, immutable product images cached in R2. Keys are unguessable UUIDs. */
+app.get("/img/*", async (c) => {
+  const key = decodeURIComponent(new URL(c.req.url).pathname.slice("/img/".length));
+  if (!/^products\/[0-9a-f-]{36}\.(jpg|png|webp|avif|gif)$/.test(key)) return c.notFound();
+  const obj = await c.env.IMAGES.get(key);
+  if (!obj) return c.notFound();
+  return new Response(obj.body, { headers: { "Content-Type": obj.httpMetadata?.contentType ?? "application/octet-stream", "Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff" } });
+});
 
 app.notFound((c) => c.json({ error: { code: "not_found", message: "Route not found" } }, 404));
 app.onError(async (err, c) => {

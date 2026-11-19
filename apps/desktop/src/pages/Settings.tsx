@@ -4,6 +4,7 @@ import { api, getApiUrl, setApiUrl } from "../lib/api";
 import { clearToken, getToken, isTauri, setToken } from "../lib/secrets";
 import { Badge, Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
+import { ConfirmDialog } from "../components/Dialog";
 
 export function Settings() {
   const qc = useQueryClient();
@@ -11,6 +12,7 @@ export function Settings() {
   const [token, setTokenValue] = useState("");
   const [hasToken, setHasToken] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [msg, setMsg] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
 
   useEffect(() => { getToken().then((t) => setHasToken(!!t)).catch(() => setHasToken(false)); }, []);
@@ -35,7 +37,7 @@ export function Settings() {
   }
 
   async function remove() {
-    if (!window.confirm("Remove the stored API token from the macOS Keychain?")) return;
+    setConfirmRemove(false);
     await clearToken(); setHasToken(false); await qc.invalidateQueries();
     setMsg({ tone: "ok", text: "Token removed." });
   }
@@ -57,10 +59,11 @@ export function Settings() {
         {!isTauri() && <p className="text-xs text-warn">Secure token storage requires the desktop app (running in a plain browser).</p>}
         <div className="flex gap-2">
           <Button onClick={save} disabled={busy}>{busy ? "Verifying…" : "Save & test"}</Button>
-          {hasToken && <Button variant="outline" onClick={remove} disabled={busy}>Remove token</Button>}
+          {hasToken && <Button variant="outline" onClick={() => setConfirmRemove(true)} disabled={busy}>Remove token</Button>}
         </div>
         {msg && <p role="status" className={msg.tone === "ok" ? "text-sm text-ok" : "text-sm text-bad"}>{msg.text}</p>}
       </Card>
+    {confirmRemove && <ConfirmDialog title="Remove token?" message="The stored API token will be deleted from the macOS Keychain." confirmLabel="Remove" onConfirm={remove} onCancel={() => setConfirmRemove(false)} />}
     </div>
   );
 }

@@ -24,3 +24,6 @@ The Worker, D1 and R2 run independently of the Mac. Incoming Instagram events ar
 | 0003 | `click_events`, `app_logs` |
 
 Only Phase 1 reads these tables (counts and recent logs); the schema is a starting design and may be revised by later phases via new migrations.
+
+## Product extraction (Phase 2)
+`apps/api/src/extract`: `fetcher` (https-only, host allow-list re-checked on every redirect hop, 8s timeout, 3 MB cap, honest User-Agent, no bot-check evasion) → `PlatformAdapter` per platform (`amazon`, `myntra`, `meesho`, registered in `registry.ts`) → shared `generic` strategy: JSON-LD → Open Graph/meta → `<title>`, plus platform-specific fallbacks. Missing data stays `null`; prices are stored in paise. Images are copied to R2 on save when possible (failure is non-fatal). No official affiliate APIs are integrated yet (they require credentials); this is the documented fallback tier.

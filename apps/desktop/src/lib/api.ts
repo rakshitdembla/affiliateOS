@@ -1,4 +1,4 @@
-import type { ApiErrorBody, ActivityItem, HealthResponse, OverviewResponse } from "@affiliateos/shared";
+import type { ApiErrorBody, ActivityItem, ExtractionResult, HealthResponse, OverviewResponse, Platform, Product, ProductList } from "@affiliateos/shared";
 import { getToken } from "./secrets";
 
 const URL_KEY = "affiliateos.apiUrl";
@@ -13,9 +13,10 @@ export class ApiError extends Error {
   constructor(public code: string, message: string, public status?: number) { super(message); }
 }
 
-async function request<T>(path: string, opts: { auth?: boolean; timeoutMs?: number; token?: string; baseUrl?: string } = {}): Promise<T> {
+async function request<T>(path: string, opts: { auth?: boolean; timeoutMs?: number; token?: string; baseUrl?: string; method?: string; body?: unknown } = {}): Promise<T> {
   const { auth = true, timeoutMs = 8000 } = opts;
   const headers: Record<string, string> = {};
+  if (opts.body !== undefined) headers["Content-Type"] = "application/json";
   if (auth) {
     const token = opts.token ?? (await getToken());
     if (!token) throw new ApiError("no_token", "No API token configured. Add one in Settings.");
@@ -25,14 +26,14 @@ async function request<T>(path: string, opts: { auth?: boolean; timeoutMs?: numb
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   let res: Response;
   try {
-    res = await fetch(`${opts.baseUrl ?? getApiUrl()}${path}`, { headers, signal: ctrl.signal });
+    res = await fetch(`${opts.baseUrl ?? getApiUrl()}${path}`, { method: opts.method ?? "GET", headers, signal: ctrl.signal, body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined });
   } catch (e) {
     throw new ApiError(ctrl.signal.aborted ? "timeout" : "network", ctrl.signal.aborted ? "Request timed out" : "Could not reach the backend");
   } finally {
     clearTimeout(timer);
   }
   let body: unknown = null;
-  try { body = await res.json(); } catch { /* non-JSON */ }
+  if (res.status !== 204) { try { body = await res.json(); } catch { /* non-JSON */ } }
   if (!res.ok && !(path === "/health" && body)) {
     const err = (body as ApiErrorBody | null)?.error;
     throw new ApiError(err?.code ?? "http_error", err?.message ?? `Request failed (${res.status})`, res.status);
@@ -40,7 +41,24 @@ async function request<T>(path: string, opts: { auth?: boolean; timeoutMs?: numb
   return body as T;
 }
 
+export interface ProductInput {
+  affiliateUrl: string; platform: Platform; title: string; description?: string | null; imageUrl?: string | null;
+  priceMinor?: number | null; currency?: string; canonicalUrl?: string | null;
+  extractionStatus?: "success" | "partial" | "manual"; extractionError?: string | null;
+}
+export interface ProductQuery { search?: string; platform?: string; status?: string; limit?: number; offset?: number }
+
 export const api = {
+  extract: (url: string) => request<ExtractionResult>("/api/v1/products/extract", { method: "POST", body: { url }, timeoutMs: 30000 }),
+  listProducts: (q: ProductQuery = {}) => {
+    const sp = new URLSearchParams();
+    Object.entries(q).forEach(([k, v]) => v !== undefined && v !== "" && sp.set(k, String(v)));
+    return request<ProductList>(`/api/v1/products?${sp}`);
+  },
+  createProduct: (p: ProductInput) => request<Product>("/api/v1/products", { method: "POST", body: p, timeoutMs: 30000 }),
+  updateProduct: (id: string, p: Partial<ProductInput> & { isActive?: boolean }) => request<Product>(`/api/v1/products/${id}`, { method: "PATCH", body: p, timeoutMs: 30000 }),
+  refreshProduct: (id: string) => request<{ product: Product; extraction: ExtractionResult }>(`/api/v1/products/${id}/refresh`, { method: "POST", timeoutMs: 30000 }),
+  deleteProduct: (id: string) => request<null>(`/api/v1/products/${id}`, { method: "DELETE" }),
   health: (o?: { baseUrl?: string }) => request<HealthResponse>("/health", { auth: false, ...o }),
   overview: (o?: { token?: string; baseUrl?: string }) => request<OverviewResponse>("/api/v1/overview", o),
   activity: () => request<{ items: ActivityItem[] }>("/api/v1/activity"),

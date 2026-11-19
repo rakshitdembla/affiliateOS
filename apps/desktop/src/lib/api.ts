@@ -1,4 +1,4 @@
-import type { ApiErrorBody, ActivityItem, Collection, CollectionDetail, ExtractionResult, HealthResponse, OverviewResponse, Platform, Product, ProductList } from "@affiliateos/shared";
+import type { ApiErrorBody, ActivityItem, Collection, CollectionDetail, ExtractionResult, HealthResponse, InstagramMedia, InstagramStatus, WebhookEventSummary, OverviewResponse, Platform, Product, ProductList } from "@affiliateos/shared";
 import { getToken } from "./secrets";
 
 const URL_KEY = "affiliateos.apiUrl";
@@ -69,6 +69,14 @@ export const api = {
   uploadCover: (id: string, file: File) => request<CollectionDetail>(`/api/v1/collections/${id}/cover`, { method: "PUT", raw: { body: file, type: file.type }, timeoutMs: 30000 }),
   deleteCover: (id: string) => request<CollectionDetail>(`/api/v1/collections/${id}/cover`, { method: "DELETE" }),
   previewCollection: (id: string) => request<{ html: string }>(`/api/v1/collections/${id}/preview`),
+  instagramStatus: () => request<InstagramStatus>("/api/v1/instagram/status"),
+  connectInstagram: () => request<{ authorizeUrl: string; expiresAt: string }>("/api/v1/instagram/connect", { method: "POST" }),
+  checkInstagram: () => request<InstagramStatus>("/api/v1/instagram/check", { method: "POST", timeoutMs: 25000 }),
+  subscribeInstagram: () => request<InstagramStatus>("/api/v1/instagram/subscribe", { method: "POST", timeoutMs: 25000 }),
+  refreshInstagramToken: () => request<InstagramStatus>("/api/v1/instagram/refresh-token", { method: "POST", timeoutMs: 25000 }),
+  disconnectInstagram: () => request<InstagramStatus>("/api/v1/instagram/disconnect", { method: "POST", timeoutMs: 25000 }),
+  instagramMedia: (after?: string) => request<{ items: InstagramMedia[]; after: string | null }>(`/api/v1/instagram/media${after ? `?after=${encodeURIComponent(after)}` : ""}`, { timeoutMs: 25000 }),
+  instagramEvents: () => request<{ items: WebhookEventSummary[] }>("/api/v1/instagram/events?limit=50"),
   deleteProduct: (id: string) => request<null>(`/api/v1/products/${id}`, { method: "DELETE" }),
   health: (o?: { baseUrl?: string }) => request<HealthResponse>("/health", { auth: false, ...o }),
   overview: (o?: { token?: string; baseUrl?: string }) => request<OverviewResponse>("/api/v1/overview", o),

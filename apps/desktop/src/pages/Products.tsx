@@ -9,6 +9,7 @@ import { Badge, Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { ConfirmDialog } from "../components/Dialog";
 import { ProductDialog } from "../components/ProductDialog";
+import { ExternalLink as ExternalAnchor } from "../components/ExternalLink";
 
 function Thumb({ p }: { p: Product }) {
   const [broken, setBroken] = useState(false);
@@ -107,7 +108,7 @@ export function Products() {
               <div className="mt-auto flex items-center gap-1 pt-1">
                 <Button variant="ghost" size="sm" aria-label={`Edit ${p.title}`} onClick={() => setEditing(p)}><Pencil size={14} /></Button>
                 <Button variant="ghost" size="sm" aria-label={`Refresh ${p.title}`} disabled={reextract.isPending} onClick={() => reextract.mutate(p)}><RefreshCw size={14} className={reextract.isPending && reextract.variables?.id === p.id ? "animate-spin" : ""} /></Button>
-                <a aria-label={`Open ${p.title}`} href={p.affiliateUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center px-3 text-muted hover:text-ink"><ExternalLink size={14} /></a>
+                <ExternalAnchor aria-label={`Open ${p.title}`} href={p.affiliateUrl} className="inline-flex h-8 items-center px-3 text-muted hover:text-ink"><ExternalLink size={14} /></ExternalAnchor>
                 <Button variant="ghost" size="sm" aria-label={`Delete ${p.title}`} className="ml-auto text-bad" onClick={() => setDeleting(p)}><Trash2 size={14} /></Button>
               </div>
               <button className="text-left text-xs text-muted underline" onClick={() => toggle.mutate(p)} disabled={toggle.isPending}>{p.isActive ? "Deactivate" : "Activate"}</button>

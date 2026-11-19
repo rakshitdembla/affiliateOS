@@ -1,6 +1,6 @@
 {
   "name": "@affiliateos/desktop",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -15,6 +15,7 @@
     "@affiliateos/shared": "workspace:*",
     "@tanstack/react-query": "^5.108.1",
     "@tauri-apps/api": "^2.12.5",
+    "@tauri-apps/plugin-opener": "^2.7.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.76.0",

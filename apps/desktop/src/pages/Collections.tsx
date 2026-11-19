@@ -7,6 +7,7 @@ import { Badge, Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { ConfirmDialog, Dialog } from "../components/Dialog";
 import { CollectionDialog } from "../components/CollectionDialog";
+import { ExternalLink as ExternalAnchor } from "../components/ExternalLink";
 
 export function Collections() {
   const qc = useQueryClient();
@@ -60,7 +61,7 @@ export function Collections() {
                 <Button variant="ghost" size="sm" aria-label={`Preview ${c.name}`} onClick={() => preview.mutate(c)} disabled={preview.isPending}><Eye size={14} /></Button>
                 <Button variant="ghost" size="sm" aria-label={`Duplicate ${c.name}`} onClick={() => dup.mutate(c)} disabled={dup.isPending}><Copy size={14} /></Button>
                 {c.isPublished && <><Button variant="ghost" size="sm" aria-label={`Copy link for ${c.name}`} title="Copy public link" onClick={() => copy(c)}><LinkIcon size={14} /></Button>
-                  <a aria-label={`Open ${c.name}`} href={c.publicUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center px-2 text-muted hover:text-ink"><ExternalLink size={14} /></a></>}
+                  <ExternalAnchor aria-label={`Open ${c.name}`} href={c.publicUrl} className="inline-flex h-8 items-center px-2 text-muted hover:text-ink"><ExternalLink size={14} /></ExternalAnchor></>}
                 <Button variant="ghost" size="sm" aria-label={`Delete ${c.name}`} className="ml-auto text-bad" onClick={() => setDeleting(c)}><Trash2 size={14} /></Button>
               </div>
               <button className="text-xs text-muted underline" onClick={() => publish.mutate(c)} disabled={publish.isPending}>{c.isPublished ? "Unpublish" : "Publish"}</button>

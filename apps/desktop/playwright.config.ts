@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
-import { API, E2E_TOKEN } from "./e2e/env";
+import { API, E2E_IG, E2E_TOKEN } from "./e2e/env";
+
+const IG_VARS = Object.entries(E2E_IG).map(([k, v]) => `--var ${k}:${v}`).join(" ");
 
 /**
  * End-to-end tests: the production web build in WebKit (the engine behind Tauri's macOS webview),
@@ -19,7 +21,7 @@ export default defineConfig({
   projects: [{ name: "webkit", use: { ...devices["Desktop Safari"], viewport: { width: 1280, height: 820 } } }],
   webServer: [
     {
-      command: `rm -rf .wrangler/e2e && pnpm exec wrangler d1 migrations apply affiliateos --local --persist-to .wrangler/e2e && pnpm exec wrangler dev --port 8787 --persist-to .wrangler/e2e --var ADMIN_API_TOKEN:${E2E_TOKEN}`,
+      command: `rm -rf .wrangler/e2e && pnpm exec wrangler d1 migrations apply affiliateos --local --persist-to .wrangler/e2e && pnpm exec wrangler dev --port 8787 --persist-to .wrangler/e2e --var ADMIN_API_TOKEN:${E2E_TOKEN} ${IG_VARS}`,
       cwd: "../api",
       url: `${API}/health`,
       reuseExistingServer: false,

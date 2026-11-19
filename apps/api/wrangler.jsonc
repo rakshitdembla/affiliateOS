@@ -6,10 +6,16 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   "vars": {
-    "APP_VERSION": "0.3.0",
+    "APP_VERSION": "0.4.0",
     // Comma-separated browser origins allowed to call /api/* (Tauri webview + Vite dev server)
-    "ALLOWED_ORIGINS": "tauri://localhost,http://tauri.localhost,http://localhost:1420"
+    "ALLOWED_ORIGINS": "tauri://localhost,http://tauri.localhost,http://localhost:1420",
+    "PUBLIC_BASE_URL": "https://affiliateos-api.rakshitdembla.workers.dev",
+    // Instagram App ID (public, not a secret). Set after creating the Meta app.
+    "IG_APP_ID": "",
+    "IG_GRAPH_VERSION": "v27.0"
   },
+  // Secrets (never in this file): ADMIN_API_TOKEN, IG_APP_SECRET, META_APP_SECRET (optional), IG_WEBHOOK_VERIFY_TOKEN, TOKEN_ENCRYPTION_KEY
+  "triggers": { "crons": ["17 3 * * *"] },
   "d1_databases": [
     {
       "binding": "DB",

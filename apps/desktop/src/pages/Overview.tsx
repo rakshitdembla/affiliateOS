@@ -70,7 +70,8 @@ export function Overview() {
             {o ? (o.instagram.connected ? <Badge tone="ok">Connected</Badge> : <Badge>Not connected</Badge>) : <Badge>Unknown</Badge>}
           </div>
           <p className="mt-3 text-sm text-muted">
-            {o?.instagram.connected ? `Connected as @${o.instagram.username ?? "unknown"}.` : "No account linked yet. Instagram integration arrives in Phase 4."}
+            {o?.instagram.connected ? `Connected as @${o.instagram.username ?? "unknown"}.` : "No account linked yet."}{" "}
+            <Link to="/instagram" className="underline">{o?.instagram.connected ? "Manage" : "Set up Instagram"}</Link>
           </p>
         </Card>
       </div>
@@ -99,9 +100,9 @@ export function Overview() {
           <div className="mt-3 flex flex-col gap-2">
             <Link to="/products"><Button variant="outline" className="w-full"><Plus size={14} /> Add product</Button></Link>
             <Link to="/collections"><Button variant="outline" className="w-full"><Plus size={14} /> New collection</Button></Link>
-            <Button variant="outline" disabled title="Available in Phase 4"><AtSign size={14} /> Connect Instagram</Button>
+            <Link to="/instagram"><Button variant="outline" className="w-full"><AtSign size={14} /> Instagram</Button></Link>
           </div>
-          <p className="mt-3 text-xs text-muted">Enabled as each phase ships.</p>
+          
         </Card>
       </div>
     </div>

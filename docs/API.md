@@ -43,3 +43,30 @@ Extraction error codes: `invalid_url`, `unsupported_url`, `redirect_unresolved`,
 | `GET /go/:productId?c=<collectionId>&s=<source>` | 302 to the product's saved affiliate URL, unmodified. 404 for unknown/inactive/malformed ids. `c` is honoured only if the product belongs to that collection. Records a click (bots flagged). No other redirect parameter is read |
 | `GET /img/…` | Cached images (products, collection covers) |
 | `GET /robots.txt` | Disallows `/go/` and `/api/` |
+
+## Instagram (Phase 4)
+
+Admin (Bearer):
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/v1/instagram/status` | Config readiness (`missing[]`), Meta dashboard URLs, connected account (never the token), webhook stats |
+| POST | `/api/v1/instagram/connect` | Returns `{authorizeUrl}` with a single-use 10-minute `state`; `503 instagram_not_configured` lists what is missing |
+| POST | `/api/v1/instagram/check` | Calls `/me` and `/me/subscribed_apps`; marks the account `expired` on token errors |
+| POST | `/api/v1/instagram/subscribe` | Subscribe the account to `comments` webhooks |
+| POST | `/api/v1/instagram/refresh-token` | Refresh the long-lived token now (Instagram requires it to be ≥24h old) |
+| POST | `/api/v1/instagram/disconnect` | Best-effort unsubscribe, then delete the account and token |
+| GET | `/api/v1/instagram/media?after=` | Recent posts/reels (id, caption, type, permalink, thumbnail) |
+| GET | `/api/v1/instagram/events?limit=` | Recent webhook events (newest first) |
+
+Public:
+
+| Path | Description |
+|---|---|
+| `GET /oauth/instagram/callback` | OAuth redirect target. Consumes `state` once; exchanges code → long-lived token; encrypts and stores it; subscribes webhooks |
+| `GET /webhooks/instagram` | Verification handshake (`hub.mode`, `hub.verify_token`, `hub.challenge`) |
+| `POST /webhooks/instagram` | Deliveries. `X-Hub-Signature-256` must match `IG_APP_SECRET` (or `META_APP_SECRET`). `401` unsigned/invalid; `503` if no secret configured and `500` if storage fails (Meta retries both for up to 36h); `413` > 1 MB. Dedupe key `comment:<id>`; redeliveries increment `delivery_count` |
+| `POST /oauth/instagram/deauthorize` | Meta `signed_request`; deletes the account and token |
+| `POST /oauth/instagram/data-deletion` | Meta `signed_request`; deletes data, returns `{url, confirmation_code}` |
+| `GET /oauth/instagram/deletion-status?code=` | Deletion confirmation page |
+| `GET /privacy` | Privacy policy |

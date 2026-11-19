@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 — Phase 4 (Instagram integration)
+- Business Login for Instagram: connect (single-use OAuth state), long-lived token stored AES-256-GCM encrypted, account status/check/refresh/disconnect, recent media listing.
+- Webhook receiver: handshake, HMAC signature verification (Instagram or Meta app secret), both payload shapes, dedupe with redelivery counts, malformed-payload retention, retry-friendly 503/500, throttled rejection logging.
+- Daily cron refreshes tokens before expiry. Deauthorize and data-deletion callbacks, deletion status page, privacy policy page. Migration 0005.
+- Desktop: Instagram page (setup checklist, Meta dashboard values with copy, connect via browser, token lifetime, webhook event log, recent reels); external links now open through the Tauri opener plugin (https only).
+- Fixed: log sanitizer redacted ordinary words after "secret"/"token"; webhook event ordering for same-millisecond deliveries.
+- Tests: API 102, desktop 19, E2E 9, Rust 2.
+
 ## 0.3.1 — Verification of Phases 1–3
 - Added end-to-end tests (Playwright, WebKit) that drive the production web build under the exact Tauri CSP against a local Worker: first run/settings, products, collections, phone storefront, `/go` redirect. Added an opt-in Rust test that round-trips the real macOS Keychain.
 - Fixed: the Overview "Backend health" card always showed "Unreachable" in the app — `/health` sent no CORS headers.

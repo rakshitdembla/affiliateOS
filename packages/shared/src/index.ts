@@ -115,3 +115,57 @@ export interface Collection {
 export interface CollectionDetail extends Collection {
   products: Product[];
 }
+
+// ---- Instagram (Phase 4) ----
+export interface InstagramAccount {
+  igUserId: string;
+  username: string | null;
+  accountType: string | null;
+  profilePictureUrl: string | null;
+  status: "connected" | "expired" | "revoked" | "error";
+  scopes: string[];
+  tokenExpiresAt: string | null;
+  tokenRefreshedAt: string | null;
+  webhooksSubscribed: boolean;
+  lastCheckedAt: string | null;
+  lastError: string | null;
+  connectedAt: string;
+}
+export interface InstagramStatus {
+  config: {
+    ready: boolean;
+    /** Names of missing settings, e.g. IG_APP_ID, IG_APP_SECRET, TOKEN_ENCRYPTION_KEY, IG_WEBHOOK_VERIFY_TOKEN */
+    missing: string[];
+    graphVersion: string;
+    metaSecretConfigured: boolean;
+    redirectUri: string;
+    webhookUrl: string;
+    privacyUrl: string;
+    deauthorizeUrl: string;
+    dataDeletionUrl: string;
+  };
+  account: InstagramAccount | null;
+  webhooks: { total: number; last24h: number; lastReceivedAt: string | null; lastSignatureKey: string | null };
+}
+export interface InstagramMedia {
+  id: string;
+  caption: string | null;
+  mediaType: string | null;
+  mediaProductType: string | null;
+  permalink: string | null;
+  thumbnailUrl: string | null;
+  timestamp: string | null;
+}
+export interface WebhookEventSummary {
+  id: string;
+  eventType: string;
+  status: "received" | "queued" | "ignored" | "malformed" | "error";
+  error: string | null;
+  mediaId: string | null;
+  commentId: string | null;
+  fromUsername: string | null;
+  text: string | null;
+  receivedAt: string;
+  deliveryCount: number;
+  signatureKey: string | null;
+}

@@ -7,6 +7,10 @@ import { log } from "./logger";
 import { products } from "./products";
 import { collections } from "./collections";
 import { storefront } from "./storefront";
+import { igAdmin } from "./instagram/admin";
+import { oauthPublic } from "./instagram/oauth";
+import { webhooks } from "./instagram/webhooks";
+import { compliance } from "./instagram/compliance";
 
 export const app = new Hono<{ Bindings: Env }>();
 
@@ -98,6 +102,7 @@ api.get("/activity", async (c) => {
 
 api.route("/products", products);
 api.route("/collections", collections);
+api.route("/instagram", igAdmin);
 app.route("/api/v1", api);
 
 /** Public, immutable product images cached in R2. Keys are unguessable UUIDs. */
@@ -109,6 +114,9 @@ app.get("/img/*", async (c) => {
   return new Response(obj.body, { headers: { "Content-Type": obj.httpMetadata?.contentType ?? "application/octet-stream", "Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff" } });
 });
 
+app.route("/", webhooks);
+app.route("/", oauthPublic);
+app.route("/", compliance);
 app.route("/", storefront);
 
 app.notFound((c) => c.json({ error: { code: "not_found", message: "Route not found" } }, 404));

@@ -4,12 +4,12 @@ import { Layout } from "./components/Layout";
 import { Overview } from "./pages/Overview";
 import { Settings } from "./pages/Settings";
 import { Products } from "./pages/Products";
+import { Collections } from "./pages/Collections";
 import { ComingSoon } from "./pages/ComingSoon";
 
 const queryClient = new QueryClient();
 
 const planned = [
-  { path: "collections", title: "Collections", phase: 3, description: "Build, order and publish shoppable collection pages." },
   { path: "instagram", title: "Instagram", phase: 4, description: "Connect your professional account through official Meta OAuth and webhooks." },
   { path: "automations", title: "Automations", phase: 5, description: "Link reels and trigger keywords to collections." },
   { path: "queue", title: "Message Queue", phase: 5, description: "Durable DM queue processed locally with retries and an audit trail." },
@@ -26,6 +26,7 @@ export default function App() {
             <Route index element={<Overview />} />
             {planned.map((p) => <Route key={p.path} path={p.path} element={<ComingSoon {...p} />} />)}
             <Route path="products" element={<Products />} />
+            <Route path="collections" element={<Collections />} />
             <Route path="settings" element={<Settings />} />
             <Route path="*" element={<ComingSoon title="Not found" phase={0} description="This page does not exist." />} />
           </Route>

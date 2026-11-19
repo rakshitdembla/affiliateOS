@@ -33,3 +33,14 @@ export async function cacheImage(env: Env, productId: string, imageUrl: string):
 export async function deleteImage(env: Env, key: string | null): Promise<void> {
   if (key) { try { await env.IMAGES.delete(key); } catch { /* best effort */ } }
 }
+
+export const IMAGE_TYPES = EXT;
+
+/** Store user-supplied image bytes after validating type and size. Returns key or null. */
+export async function storeImage(env: Env, keyBase: string, bytes: ArrayBuffer, type: string): Promise<string | null> {
+  const ext = EXT[type.toLowerCase()];
+  if (!ext || bytes.byteLength === 0 || bytes.byteLength > MAX_BYTES) return null;
+  const key = `${keyBase}.${ext}`;
+  await env.IMAGES.put(key, bytes, { httpMetadata: { contentType: type.toLowerCase(), cacheControl: "public, max-age=31536000, immutable" } });
+  return key;
+}

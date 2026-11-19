@@ -5,6 +5,8 @@ import type { Env } from "./env";
 import { requireAdmin } from "./auth";
 import { log } from "./logger";
 import { products } from "./products";
+import { collections } from "./collections";
+import { storefront } from "./storefront";
 
 export const app = new Hono<{ Bindings: Env }>();
 
@@ -92,16 +94,19 @@ api.get("/activity", async (c) => {
 });
 
 api.route("/products", products);
+api.route("/collections", collections);
 app.route("/api/v1", api);
 
 /** Public, immutable product images cached in R2. Keys are unguessable UUIDs. */
 app.get("/img/*", async (c) => {
   const key = decodeURIComponent(new URL(c.req.url).pathname.slice("/img/".length));
-  if (!/^products\/[0-9a-f-]{36}\.(jpg|png|webp|avif|gif)$/.test(key)) return c.notFound();
+  if (!/^(products\/[0-9a-f-]{36}|collections\/[0-9a-f-]{36}(-\d+)?)\.(jpg|png|webp|avif|gif)$/.test(key)) return c.notFound();
   const obj = await c.env.IMAGES.get(key);
   if (!obj) return c.notFound();
   return new Response(obj.body, { headers: { "Content-Type": obj.httpMetadata?.contentType ?? "application/octet-stream", "Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff" } });
 });
+
+app.route("/", storefront);
 
 app.notFound((c) => c.json({ error: { code: "not_found", message: "Route not found" } }, 404));
 app.onError(async (err, c) => {

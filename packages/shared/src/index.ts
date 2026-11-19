@@ -96,3 +96,22 @@ export interface ProductList {
   limit: number;
   offset: number;
 }
+
+// ---- Collections (Phase 3) ----
+export interface Collection {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  /** Cover if uploaded, else first product image; for admin cards only. */
+  previewImageUrl: string | null;
+  isPublished: boolean;
+  productCount: number;
+  publicUrl: string;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface CollectionDetail extends Collection {
+  products: Product[];
+}

@@ -25,7 +25,7 @@ const createSchema = z.object({
 const patchSchema = createSchema.partial().extend({ isActive: z.boolean().optional() });
 
 type Row = Record<string, any>;
-const toProduct = (r: Row, origin: string): Product => ({
+export const productFromRow = (r: Row, origin: string): Product => ({
   id: r.id, title: r.title, description: r.description, imageUrl: r.image_url,
   cachedImageUrl: r.cached_image_key ? `${origin}/img/${r.cached_image_key}` : null,
   priceMinor: r.price_minor, currency: r.currency, platform: r.platform,
@@ -64,12 +64,12 @@ products.get("/", async (c) => {
     c.env.DB.prepare(`SELECT COUNT(*) n FROM products ${w}`).bind(...args).first<{ n: number }>(),
   ]);
   const origin = originOf(c.req.url);
-  return c.json({ items: rows.results.map((r) => toProduct(r, origin)), total: total?.n ?? 0, limit, offset });
+  return c.json({ items: rows.results.map((r) => productFromRow(r, origin)), total: total?.n ?? 0, limit, offset });
 });
 
 products.get("/:id", async (c) => {
   const r = await c.env.DB.prepare("SELECT * FROM products WHERE id = ?").bind(c.req.param("id")).first<Row>();
-  return r ? c.json(toProduct(r, originOf(c.req.url))) : bad(c, "not_found", "Product not found", 404);
+  return r ? c.json(productFromRow(r, originOf(c.req.url))) : bad(c, "not_found", "Product not found", 404);
 });
 
 products.post("/", async (c) => {
@@ -92,7 +92,7 @@ products.post("/", async (c) => {
     d.affiliateUrl, d.canonicalUrl ?? null, d.extractionStatus, d.extractionError ?? null,
     d.extractionStatus === "manual" ? null : now, d.priceMinor != null ? now : null).run();
   const r = await c.env.DB.prepare("SELECT * FROM products WHERE id = ?").bind(id).first<Row>();
-  return c.json(toProduct(r!, originOf(c.req.url)), 201);
+  return c.json(productFromRow(r!, originOf(c.req.url)), 201);
 });
 
 products.patch("/:id", async (c) => {
@@ -129,7 +129,7 @@ products.patch("/:id", async (c) => {
     "manual", priceChanged ? now : cur.price_updated_at, now, id,
   ).run();
   const r = await c.env.DB.prepare("SELECT * FROM products WHERE id = ?").bind(id).first<Row>();
-  return c.json(toProduct(r!, originOf(c.req.url)));
+  return c.json(productFromRow(r!, originOf(c.req.url)));
 });
 
 /** Re-run extraction and overwrite only fields the page actually provided. */
@@ -154,7 +154,7 @@ products.post("/:id/refresh", async (c) => {
       res.status === "success" ? "success" : "partial", res.error?.message ?? null, now, priceChanged ? now : cur.price_updated_at, now, id).run();
   }
   const r = await c.env.DB.prepare("SELECT * FROM products WHERE id = ?").bind(id).first<Row>();
-  return c.json({ product: toProduct(r!, originOf(c.req.url)), extraction: res });
+  return c.json({ product: productFromRow(r!, originOf(c.req.url)), extraction: res });
 });
 
 products.delete("/:id", async (c) => {

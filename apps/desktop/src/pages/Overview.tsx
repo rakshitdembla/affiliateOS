@@ -98,7 +98,7 @@ export function Overview() {
           <div className="text-sm font-medium">Quick actions</div>
           <div className="mt-3 flex flex-col gap-2">
             <Link to="/products"><Button variant="outline" className="w-full"><Plus size={14} /> Add product</Button></Link>
-            <Button variant="outline" disabled title="Available in Phase 3"><Plus size={14} /> New collection</Button>
+            <Link to="/collections"><Button variant="outline" className="w-full"><Plus size={14} /> New collection</Button></Link>
             <Button variant="outline" disabled title="Available in Phase 4"><AtSign size={14} /> Connect Instagram</Button>
           </div>
           <p className="mt-3 text-xs text-muted">Enabled as each phase ships.</p>

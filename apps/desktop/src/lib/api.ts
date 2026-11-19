@@ -1,4 +1,4 @@
-import type { ApiErrorBody, ActivityItem, ExtractionResult, HealthResponse, OverviewResponse, Platform, Product, ProductList } from "@affiliateos/shared";
+import type { ApiErrorBody, ActivityItem, Collection, CollectionDetail, ExtractionResult, HealthResponse, OverviewResponse, Platform, Product, ProductList } from "@affiliateos/shared";
 import { getToken } from "./secrets";
 
 const URL_KEY = "affiliateos.apiUrl";
@@ -13,10 +13,11 @@ export class ApiError extends Error {
   constructor(public code: string, message: string, public status?: number) { super(message); }
 }
 
-async function request<T>(path: string, opts: { auth?: boolean; timeoutMs?: number; token?: string; baseUrl?: string; method?: string; body?: unknown } = {}): Promise<T> {
+async function request<T>(path: string, opts: { auth?: boolean; timeoutMs?: number; token?: string; baseUrl?: string; method?: string; body?: unknown; raw?: { body: BodyInit; type: string } } = {}): Promise<T> {
   const { auth = true, timeoutMs = 8000 } = opts;
   const headers: Record<string, string> = {};
   if (opts.body !== undefined) headers["Content-Type"] = "application/json";
+  if (opts.raw) headers["Content-Type"] = opts.raw.type;
   if (auth) {
     const token = opts.token ?? (await getToken());
     if (!token) throw new ApiError("no_token", "No API token configured. Add one in Settings.");
@@ -26,7 +27,7 @@ async function request<T>(path: string, opts: { auth?: boolean; timeoutMs?: numb
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   let res: Response;
   try {
-    res = await fetch(`${opts.baseUrl ?? getApiUrl()}${path}`, { method: opts.method ?? "GET", headers, signal: ctrl.signal, body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined });
+    res = await fetch(`${opts.baseUrl ?? getApiUrl()}${path}`, { method: opts.method ?? "GET", headers, signal: ctrl.signal, body: opts.raw ? opts.raw.body : opts.body !== undefined ? JSON.stringify(opts.body) : undefined });
   } catch (e) {
     throw new ApiError(ctrl.signal.aborted ? "timeout" : "network", ctrl.signal.aborted ? "Request timed out" : "Could not reach the backend");
   } finally {
@@ -58,6 +59,16 @@ export const api = {
   createProduct: (p: ProductInput) => request<Product>("/api/v1/products", { method: "POST", body: p, timeoutMs: 30000 }),
   updateProduct: (id: string, p: Partial<ProductInput> & { isActive?: boolean }) => request<Product>(`/api/v1/products/${id}`, { method: "PATCH", body: p, timeoutMs: 30000 }),
   refreshProduct: (id: string) => request<{ product: Product; extraction: ExtractionResult }>(`/api/v1/products/${id}/refresh`, { method: "POST", timeoutMs: 30000 }),
+  listCollections: () => request<{ items: Collection[] }>("/api/v1/collections"),
+  getCollection: (id: string) => request<CollectionDetail>(`/api/v1/collections/${id}`),
+  createCollection: (b: { name: string; slug?: string; description?: string | null }) => request<CollectionDetail>("/api/v1/collections", { method: "POST", body: b }),
+  updateCollection: (id: string, b: { name?: string; slug?: string; description?: string | null; isPublished?: boolean }) => request<CollectionDetail>(`/api/v1/collections/${id}`, { method: "PATCH", body: b }),
+  deleteCollection: (id: string) => request<null>(`/api/v1/collections/${id}`, { method: "DELETE" }),
+  duplicateCollection: (id: string) => request<CollectionDetail>(`/api/v1/collections/${id}/duplicate`, { method: "POST" }),
+  setCollectionProducts: (id: string, productIds: string[]) => request<CollectionDetail>(`/api/v1/collections/${id}/products`, { method: "PUT", body: { productIds } }),
+  uploadCover: (id: string, file: File) => request<CollectionDetail>(`/api/v1/collections/${id}/cover`, { method: "PUT", raw: { body: file, type: file.type }, timeoutMs: 30000 }),
+  deleteCover: (id: string) => request<CollectionDetail>(`/api/v1/collections/${id}/cover`, { method: "DELETE" }),
+  previewCollection: (id: string) => request<{ html: string }>(`/api/v1/collections/${id}/preview`),
   deleteProduct: (id: string) => request<null>(`/api/v1/products/${id}`, { method: "DELETE" }),
   health: (o?: { baseUrl?: string }) => request<HealthResponse>("/health", { auth: false, ...o }),
   overview: (o?: { token?: string; baseUrl?: string }) => request<OverviewResponse>("/api/v1/overview", o),

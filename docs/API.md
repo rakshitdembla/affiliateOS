@@ -23,3 +23,23 @@ Errors: `{ "error": { "code": string, "message": string } }`.
 | GET | `/img/products/:uuid.ext` | **Public**. Cached image from R2 (immutable) |
 
 Extraction error codes: `invalid_url`, `unsupported_url`, `redirect_unresolved`, `site_unreachable`, `extraction_blocked`, `product_unavailable`, `adapter_not_implemented`, `parse_failed`.
+
+## Collections (Phase 3) — Bearer-authenticated
+
+| Method | Path | Description |
+|---|---|---|
+| GET/POST | `/api/v1/collections` | List (with `productCount`, `publicUrl`) / create (`slug` auto-generated and de-duplicated if omitted) |
+| GET/PATCH/DELETE | `/api/v1/collections/:id` | Detail with ordered products / edit (`isPublished` requires ≥1 active product) / delete (`409 in_use` if an automation references it) |
+| PUT | `/api/v1/collections/:id/products` | Body `{productIds:[…]}` replaces the ordered list atomically (add/remove/reorder) |
+| POST | `/api/v1/collections/:id/duplicate` | Copy as unpublished draft |
+| PUT/DELETE | `/api/v1/collections/:id/cover` | Upload raw image body (JPEG/PNG/WebP/AVIF/GIF ≤5 MB) / remove |
+| GET | `/api/v1/collections/:id/preview` | `{html}` of the public page for any collection; not tracked |
+
+## Public routes (no auth)
+
+| Path | Description |
+|---|---|
+| `GET /c/:slug` | Server-rendered storefront for a **published** collection (404 otherwise). Optional `?s=<source>` is attributed to views/clicks. Records a view (bots flagged) |
+| `GET /go/:productId?c=<collectionId>&s=<source>` | 302 to the product's saved affiliate URL, unmodified. 404 for unknown/inactive/malformed ids. `c` is honoured only if the product belongs to that collection. Records a click (bots flagged). No other redirect parameter is read |
+| `GET /img/…` | Cached images (products, collection covers) |
+| `GET /robots.txt` | Disallows `/go/` and `/api/` |

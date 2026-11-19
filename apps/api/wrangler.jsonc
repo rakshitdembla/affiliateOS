@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "affiliateos-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "vars": {
+    "APP_VERSION": "0.1.0",
+    // Comma-separated browser origins allowed to call /api/* (Tauri webview + Vite dev server)
+    "ALLOWED_ORIGINS": "tauri://localhost,http://tauri.localhost,http://localhost:1420"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "affiliateos",
+      // Placeholder: used for local dev only. Replace with the real ID from `wrangler d1 create affiliateos` before deploying.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "IMAGES",
+      "bucket_name": "affiliateos-images"
+    }
+  ]
+}

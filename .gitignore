@@ -1,0 +1,15 @@
+node_modules/
+dist/
+target/
+.wrangler/
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+!.env.example
+!.dev.vars.example
+*.log
+.DS_Store
+coverage/
+apps/desktop/src-tauri/gen/
+apps/desktop/src-tauri/target/

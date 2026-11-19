@@ -1,0 +1,15 @@
+{
+  "name": "affiliateos",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@12.21.0",
+  "scripts": {
+    "dev:api": "pnpm --filter @affiliateos/api dev",
+    "dev:desktop": "pnpm --filter @affiliateos/desktop tauri dev",
+    "dev:web": "pnpm --filter @affiliateos/desktop dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "db:migrate:local": "pnpm --filter @affiliateos/api db:migrate:local"
+  }
+}

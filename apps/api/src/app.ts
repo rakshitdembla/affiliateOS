@@ -1,0 +1,99 @@
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import type { ActivityItem, HealthResponse, OverviewResponse } from "@affiliateos/shared";
+import type { Env } from "./env";
+import { requireAdmin } from "./auth";
+import { log } from "./logger";
+
+export const app = new Hono<{ Bindings: Env }>();
+
+app.use("*", async (c, next) => {
+  await next();
+  c.header("X-Content-Type-Options", "nosniff");
+  c.header("Cache-Control", "no-store");
+});
+
+app.use("/api/*", async (c, next) => {
+  const allowed = c.env.ALLOWED_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean);
+  return cors({
+    origin: (origin) => (allowed.includes(origin) ? origin : null),
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowHeaders: ["Authorization", "Content-Type"],
+    maxAge: 600,
+  })(c, next);
+});
+
+/** Public liveness + dependency check. Contains no business data. */
+app.get("/health", async (c) => {
+  const checks: HealthResponse["checks"] = { database: { ok: false }, storage: { ok: false } };
+
+  const t0 = Date.now();
+  try {
+    await c.env.DB.prepare("SELECT 1").first();
+    checks.database = { ok: true, latencyMs: Date.now() - t0 };
+  } catch {
+    checks.database = { ok: false, error: "database_unreachable" };
+  }
+
+  const t1 = Date.now();
+  try {
+    await c.env.IMAGES.list({ limit: 1 });
+    checks.storage = { ok: true, latencyMs: Date.now() - t1 };
+  } catch {
+    checks.storage = { ok: false, error: "storage_unreachable" };
+  }
+
+  const ok = checks.database.ok && checks.storage.ok;
+  if (!ok) await log(c.env, { level: "error", module: "health", operation: "check", code: "dependency_down", message: JSON.stringify(checks) });
+  const body: HealthResponse = {
+    status: ok ? "ok" : "degraded",
+    service: "affiliateos-api",
+    version: c.env.APP_VERSION,
+    time: new Date().toISOString(),
+    checks,
+  };
+  return c.json(body, ok ? 200 : 503);
+});
+
+const api = new Hono<{ Bindings: Env }>();
+api.use("*", requireAdmin);
+
+api.get("/ping", (c) => c.json({ ok: true }));
+
+api.get("/overview", async (c) => {
+  const db = c.env.DB;
+  const count = async (sql: string): Promise<number> => ((await db.prepare(sql).first<{ n: number }>())?.n ?? 0);
+  const [products, collections, published, clicks, pending, failed, sentToday, ig, lastEvent] = await Promise.all([
+    count("SELECT COUNT(*) n FROM products"),
+    count("SELECT COUNT(*) n FROM collections"),
+    count("SELECT COUNT(*) n FROM collections WHERE is_published = 1"),
+    count("SELECT COUNT(*) n FROM click_events WHERE is_bot = 0"),
+    count("SELECT COUNT(*) n FROM dm_jobs WHERE status = 'pending'"),
+    count("SELECT COUNT(*) n FROM dm_jobs WHERE status = 'failed'"),
+    count("SELECT COUNT(*) n FROM dm_jobs WHERE status = 'sent' AND updated_at >= date('now')"),
+    db.prepare("SELECT username FROM instagram_accounts WHERE status = 'connected' LIMIT 1").first<{ username: string | null }>(),
+    db.prepare("SELECT MAX(received_at) t FROM webhook_events").first<{ t: string | null }>(),
+  ]);
+  const body: OverviewResponse = {
+    products, collections, publishedCollections: published, clicks,
+    pendingMessages: pending, failedMessages: failed, sentToday,
+    instagram: { connected: !!ig, username: ig?.username ?? null },
+    lastEventAt: lastEvent?.t ?? null,
+  };
+  return c.json(body);
+});
+
+api.get("/activity", async (c) => {
+  const { results } = await c.env.DB.prepare(
+    "SELECT id, logged_at AS time, level, module, message FROM app_logs ORDER BY logged_at DESC LIMIT 10",
+  ).all<ActivityItem>();
+  return c.json({ items: results });
+});
+
+app.route("/api/v1", api);
+
+app.notFound((c) => c.json({ error: { code: "not_found", message: "Route not found" } }, 404));
+app.onError(async (err, c) => {
+  await log(c.env, { level: "error", module: "api", operation: `${c.req.method} ${new URL(c.req.url).pathname}`, code: "unhandled", message: err.message });
+  return c.json({ error: { code: "internal_error", message: "Internal server error" } }, 500);
+});

@@ -33,7 +33,7 @@ export function Layout() {
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto px-2 text-xs text-muted">v0.1.0 · Phase 1</div>
+        <div className="mt-auto px-2 text-xs text-muted">v{__APP_VERSION__}</div>
       </aside>
       <main className="min-w-0 flex-1 overflow-y-auto p-8">
         <Outlet />

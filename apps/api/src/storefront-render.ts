@@ -24,8 +24,9 @@ h1{font:400 clamp(28px,6vw,46px)/1.15 "Iowan Old Style",Georgia,"Times New Roman
 .ph{aspect-ratio:4/5;background:#f2f0ed;overflow:hidden;position:relative}
 .ph img{width:100%;height:100%;object-fit:cover;display:block}
 .ph img.broken{display:none}
+.ph .none{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#a8a29e}
 .plat{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#78716c;margin:10px 0 2px}
-.t{font-size:14px;margin:0 0 4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.t{font-size:14px;font-weight:400;margin:0 0 4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .pr{font-weight:600;margin-bottom:10px;min-height:1.5em}
 .btn{margin-top:auto;display:block;text-align:center;background:#111;color:#fff;text-decoration:none;padding:11px 8px;font-size:13px;letter-spacing:.06em;text-transform:uppercase}
 .btn:hover,.btn:focus-visible{background:#44403c}
@@ -49,7 +50,7 @@ export function renderCollectionPage(
   const cards = products.map((p) => {
     const img = p.cachedImageUrl ?? p.imageUrl;
     return `<article class="card">
-  <div class="ph">${img ? `<img src="${esc(img)}" alt="${esc(p.title)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : ""}</div>
+  <div class="ph"><span class="none" aria-hidden="true">Image unavailable</span>${img ? `<img src="${esc(img)}" alt="${esc(p.title)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" style="position:relative">` : ""}</div>
   <div class="plat">${esc(PLATFORM[p.platform] ?? p.platform)}</div>
   <h2 class="t">${esc(p.title)}</h2>
   <div class="pr">${esc(price(p))}</div>

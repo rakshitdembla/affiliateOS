@@ -12,6 +12,14 @@ const TIMEOUT_MS = 8000;
 const UA = "Mozilla/5.0 (compatible; AffiliateOS/0.1; personal product-metadata fetcher)";
 
 const BLOCK_MARKERS = /captcha|robot check|automated access|access denied|are you a human|unusual traffic|verify you are human/i;
+/** Titles of interstitial/error pages some sites return with HTTP 200 to non-browser clients (e.g. Myntra's "Site Maintenance"). */
+const BLOCK_TITLES = /^(site maintenance|access denied|attention required|just a moment|forbidden|request blocked|pardon our interruption|robot check|error\b|oops)/i;
+
+export function isBlockPage(html: string): boolean {
+  const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html.slice(0, 20000))?.[1]?.trim() ?? "";
+  if (BLOCK_TITLES.test(title)) return true;
+  return BLOCK_MARKERS.test(html.slice(0, 20000)) && !/<script[^>]+ld\+json/i.test(html);
+}
 
 /**
  * Fetch a supported-platform page. Redirects are followed manually and every hop must be a
@@ -54,8 +62,8 @@ export async function fetchPage(rawUrl: string): Promise<FetchOutcome> {
     if (!res.ok) return { ok: false, code: "site_unreachable", message: `The website returned HTTP ${res.status}` };
 
     const html = (await readCapped(res, MAX_BYTES)).slice(0, MAX_BYTES);
-    if (BLOCK_MARKERS.test(html.slice(0, 20000)) && !/<script[^>]+ld\+json/i.test(html)) {
-      return { ok: false, code: "extraction_blocked", message: "The website served a bot-check page instead of the product" };
+    if (isBlockPage(html)) {
+      return { ok: false, code: "extraction_blocked", message: "The website served a bot-check or error page instead of the product" };
     }
     return { ok: true, html, finalUrl: url };
   }

@@ -39,6 +39,21 @@ fn secret_delete(key: String) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    /// Exercises the real macOS Keychain through the same `keyring` backend the app uses,
+    /// with a separate service name so the app's real token is never touched.
+    /// Run with: cargo test -- --ignored
+    #[test]
+    #[ignore = "touches the real macOS Keychain"]
+    fn keychain_roundtrip_on_this_mac() {
+        let e = keyring::Entry::new("com.affiliateos.desktop.selftest", "probe").unwrap();
+        e.set_password("value-1").unwrap();
+        assert_eq!(e.get_password().unwrap(), "value-1");
+        e.set_password("value-2").unwrap();
+        assert_eq!(e.get_password().unwrap(), "value-2");
+        e.delete_credential().unwrap();
+        assert!(matches!(e.get_password(), Err(keyring::Error::NoEntry)));
+    }
+
     #[test]
     fn rejects_unknown_keys() {
         assert!(secret_get("something_else".into()).is_err());

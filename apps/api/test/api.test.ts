@@ -36,6 +36,12 @@ describe("overview", () => {
 });
 
 describe("cors", () => {
+  it("lets the desktop app read /health cross-origin (regression: health card showed Unreachable)", async () => {
+    const res = await call("/health", { headers: { Origin: "tauri://localhost" } });
+    expect(res.headers.get("access-control-allow-origin")).toBe("tauri://localhost");
+    const other = await call("/health", { headers: { Origin: "https://evil.example" } });
+    expect(other.headers.get("access-control-allow-origin")).toBeNull();
+  });
   it("allows the Tauri origin and blocks others", async () => {
     const ok = await call("/api/v1/ping", { headers: { ...auth, Origin: "tauri://localhost" } });
     expect(ok.headers.get("access-control-allow-origin")).toBe("tauri://localhost");

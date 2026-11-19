@@ -7,7 +7,7 @@ import { Button } from "../components/ui/button";
 
 function Stat({ icon: Icon, label, value, hint }: { icon: typeof Package; label: string; value: string; hint?: string }) {
   return (
-    <Card>
+    <Card role="group" aria-label={label}>
       <div className="flex items-center gap-2 text-sm text-muted"><Icon size={15} aria-hidden /> {label}</div>
       <div className="mt-2 text-3xl font-semibold tabular-nums">{value}</div>
       {hint && <div className="mt-1 text-xs text-muted">{hint}</div>}

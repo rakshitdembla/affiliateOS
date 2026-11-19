@@ -92,7 +92,7 @@ export function Products() {
 
       <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
         {items.map((p) => (
-          <Card key={p.id} className={`flex flex-col overflow-hidden p-0 ${p.isActive ? "" : "opacity-60"}`}>
+          <Card key={p.id} role="article" aria-label={p.title} className={`flex flex-col overflow-hidden p-0 ${p.isActive ? "" : "opacity-60"}`}>
             <div className="aspect-square bg-stone-100"><Thumb p={p} /></div>
             <div className="flex flex-1 flex-col gap-2 p-3">
               <div className="line-clamp-2 text-sm font-medium" title={p.title}>{p.title}</div>

@@ -13,3 +13,5 @@ target/
 coverage/
 apps/desktop/src-tauri/gen/
 apps/desktop/src-tauri/target/
+test-results/
+playwright-report/

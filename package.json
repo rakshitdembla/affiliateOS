@@ -10,6 +10,7 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "db:migrate:local": "pnpm --filter @affiliateos/api db:migrate:local"
+    "db:migrate:local": "pnpm --filter @affiliateos/api db:migrate:local",
+    "e2e": "pnpm --filter @affiliateos/desktop e2e"
   }
 }

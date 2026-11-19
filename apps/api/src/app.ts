@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
 import type { ActivityItem, HealthResponse, OverviewResponse } from "@affiliateos/shared";
 import type { Env } from "./env";
@@ -16,7 +16,8 @@ app.use("*", async (c, next) => {
   if (!c.res.headers.has("Cache-Control")) c.header("Cache-Control", "no-store");
 });
 
-app.use("/api/*", async (c, next) => {
+/** CORS for the desktop app's origins only. Applies to the admin API and the health check it polls. */
+const desktopCors: MiddlewareHandler<{ Bindings: Env }> = async (c, next) => {
   const allowed = c.env.ALLOWED_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean);
   return cors({
     origin: (origin) => (allowed.includes(origin) ? origin : null),
@@ -24,7 +25,9 @@ app.use("/api/*", async (c, next) => {
     allowHeaders: ["Authorization", "Content-Type"],
     maxAge: 600,
   })(c, next);
-});
+};
+app.use("/api/*", desktopCors);
+app.use("/health", desktopCors);
 
 /** Public liveness + dependency check. Contains no business data. */
 app.get("/health", async (c) => {

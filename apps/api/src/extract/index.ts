@@ -2,6 +2,7 @@ import type { ExtractionResult, ExtractedFields } from "@affiliateos/shared";
 import { adapterFor } from "./registry";
 import { fetchPage } from "./fetcher";
 import { detectPlatform, parseSafeUrl } from "./url";
+import { jsonLdProduct, metaContent } from "./html";
 
 const EMPTY: ExtractedFields = { title: null, description: null, imageUrl: null, priceMinor: null, currency: "INR", canonicalUrl: null };
 
@@ -35,8 +36,12 @@ export async function extractProduct(rawUrl: string): Promise<ExtractionResult> 
   if (!fields.imageUrl) missing.push("image");
   if (fields.priceMinor === null) missing.push("price");
 
-  if (!fields.title) {
-    return { platform: finalPlatform, status: "failed", fields, missing, error: { code: "parse_failed", message: "No product details could be read from the page" }, finalUrl };
+  // A bare <title> is not evidence of a product page (error/interstitial pages have titles too).
+  const productSignals =
+    jsonLdProduct(page.html) !== null || metaContent(page.html, "og:title") !== null || fields.priceMinor !== null || fields.imageUrl !== null ||
+    /\bid\s*=\s*["']productTitle["']/i.test(page.html); // Amazon's product title element
+  if (!fields.title || !productSignals) {
+    return { platform: finalPlatform, status: "failed", fields: { ...fields, title: null }, missing: ["title", "image", "price"], error: { code: "parse_failed", message: "The page didn't contain readable product details" }, finalUrl };
   }
   return { platform: finalPlatform, status: missing.length ? "partial" : "success", fields, missing, error: null, finalUrl };
 }

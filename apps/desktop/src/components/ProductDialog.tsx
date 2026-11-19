@@ -8,6 +8,7 @@ import { Dialog } from "./Dialog";
 import { Button } from "./ui/button";
 
 const field = "mt-1 h-9 w-full rounded-md border border-border px-3 text-sm";
+const sameText = (a: string | undefined, b: string) => !!a && a.replace(/\.$/, "").toLowerCase() === b.replace(/\.$/, "").toLowerCase();
 
 /** Add (paste URL → fetch → review → save) or edit a product. Manual entry is always available. */
 export function ProductDialog({ product, onClose }: { product?: Product; onClose: () => void }) {
@@ -62,7 +63,7 @@ export function ProductDialog({ product, onClose }: { product?: Product; onClose
         <label className="block">
           <span className="text-muted">Affiliate URL</span>
           <div className="flex gap-2">
-            <input aria-label="Affiliate URL" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" className={field} />
+            <input aria-label="Affiliate URL" value={url} onChange={(e) => { setUrl(e.target.value); setExtraction(null); }} placeholder="https://…" className={field} />
             {!product && <Button onClick={() => fetchDetails.mutate()} disabled={busy || !url.trim()} className="mt-1 shrink-0">{fetchDetails.isPending ? "Fetching…" : "Fetch details"}</Button>}
           </div>
         </label>
@@ -71,7 +72,9 @@ export function ProductDialog({ product, onClose }: { product?: Product; onClose
         {fetchErr && <p role="alert" className="rounded-md bg-red-50 p-2 text-bad">Couldn't reach the backend: {fetchErr.message}</p>}
         {extraction?.error && (
           <p role="alert" className="rounded-md bg-amber-50 p-2 text-warn">
-            <b>{ERROR_HELP[extraction.error.code] ?? "Extraction failed."}</b> {extraction.error.message}. You can fill in the details manually below.
+            <b>{ERROR_HELP[extraction.error.code] ?? "Extraction failed."}</b>{" "}
+            {sameText(ERROR_HELP[extraction.error.code], extraction.error.message) ? "" : `${extraction.error.message.replace(/\.$/, "")}. `}
+            You can fill in the details manually below.
           </p>
         )}
         {extraction && !extraction.error && extraction.missing.length > 0 && (

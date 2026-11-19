@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Eye, ExternalLink, ImageOff, Pencil, Plus, Trash2 } from "lucide-react";
+import { Copy, Eye, ExternalLink, ImageOff, Link as LinkIcon, Pencil, Plus, Trash2 } from "lucide-react";
 import type { Collection, CollectionDetail } from "@affiliateos/shared";
 import { api } from "../lib/api";
 import { Badge, Card } from "../components/ui/card";
@@ -50,7 +50,7 @@ export function Collections() {
       )}
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((c) => (
-          <Card key={c.id} className="overflow-hidden p-0">
+          <Card key={c.id} role="article" aria-label={c.name} className="overflow-hidden p-0">
             <div className="h-36 bg-stone-100">{c.previewImageUrl ? <img src={c.previewImageUrl} alt="" loading="lazy" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-muted"><ImageOff size={22} aria-label="No image" /></div>}</div>
             <div className="space-y-2 p-4">
               <div className="flex items-start justify-between gap-2"><div className="font-medium">{c.name}</div>{c.isPublished ? <Badge tone="ok">Published</Badge> : <Badge>Draft</Badge>}</div>
@@ -59,7 +59,7 @@ export function Collections() {
                 <Button variant="ghost" size="sm" aria-label={`Edit ${c.name}`} onClick={() => open.mutate(c)} disabled={open.isPending}><Pencil size={14} /></Button>
                 <Button variant="ghost" size="sm" aria-label={`Preview ${c.name}`} onClick={() => preview.mutate(c)} disabled={preview.isPending}><Eye size={14} /></Button>
                 <Button variant="ghost" size="sm" aria-label={`Duplicate ${c.name}`} onClick={() => dup.mutate(c)} disabled={dup.isPending}><Copy size={14} /></Button>
-                {c.isPublished && <><Button variant="ghost" size="sm" aria-label={`Copy link for ${c.name}`} onClick={() => copy(c)}>Copy link</Button>
+                {c.isPublished && <><Button variant="ghost" size="sm" aria-label={`Copy link for ${c.name}`} title="Copy public link" onClick={() => copy(c)}><LinkIcon size={14} /></Button>
                   <a aria-label={`Open ${c.name}`} href={c.publicUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center px-2 text-muted hover:text-ink"><ExternalLink size={14} /></a></>}
                 <Button variant="ghost" size="sm" aria-label={`Delete ${c.name}`} className="ml-auto text-bad" onClick={() => setDeleting(c)}><Trash2 size={14} /></Button>
               </div>

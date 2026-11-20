@@ -34,3 +34,37 @@ Requirements: an Instagram **professional** account (Business or Creator). Comme
 7. Set `IG_APP_ID`, deploy (`pnpm --filter @affiliateos/api deploy`), then AffiliateOS → **Instagram → Connect Instagram**.
 
 **Access level / app mode (verify for your app):** Meta's webhook docs state the app must be **Live** to receive notifications and list **Advanced Access** for the `comments` field (Advanced Access requires App Review and Business Verification). The Business Login docs state Standard Access is enough for accounts you own. Which applies to your app is confirmed once connected: a real comment on your reel either appears in the Instagram page's event log or it doesn't.
+
+## Runbook (v1.0.0)
+
+### Health
+Desktop → Settings → **System health** (also summarised on the Overview when something needs attention): database, storage, Instagram token/webhooks, queue backlog and uncertain replies, Mac engine last seen, backups, daily maintenance. API: `GET /api/v1/system/status`.
+
+### Daily maintenance (cron `17 3 * * *` UTC)
+Refresh Instagram tokens nearing expiry → recover stale jobs → turn leftover comments into jobs → retention clean-up → backup. Steps are isolated; a failing step is logged (`cron_step_failed`) and the rest still run.
+
+### Restore
+1. **Preferred — D1 Time Travel** (point-in-time, built in):
+   `pnpm exec wrangler d1 time-travel info affiliateos` then
+   `pnpm exec wrangler d1 time-travel restore affiliateos --timestamp=<ISO time before the incident>`
+2. **From an R2 backup** (any of the newest 14 daily snapshots, or one made with Settings → Back up now):
+   ```sh
+   cd apps/api
+   pnpm exec wrangler r2 object get affiliateos-images/backups/<file>.json.gz --remote --file backup.json.gz
+   node scripts/backup-to-sql.mjs backup.json.gz > restore.sql      # review it
+   pnpm exec wrangler d1 execute affiliateos --remote --file restore.sql
+   ```
+   The target database must have the migrations listed in the backup. Restore drill (2026-11-20, local): all tables matched row-for-row.
+
+### Rotate secrets
+- **Admin API token** (lost device): `openssl rand -hex 32 | pnpm exec wrangler secret put ADMIN_API_TOKEN`, then paste the new token in the app's Settings.
+- **Instagram app secret**: update in the Meta dashboard, then `pnpm exec wrangler secret put IG_APP_SECRET`.
+- **Token encryption key**: `openssl rand -base64 32 | pnpm exec wrangler secret put TOKEN_ENCRYPTION_KEY`, then reconnect Instagram (old ciphertext can no longer be read — by design).
+
+### Incidents
+- *Replies stopped*: check System health → engine (is the app open / paused?), Instagram status, Logs filtered to `error`.
+- *Instagram "bothersome or abusive" warning*: the engine auto-pauses. Review automations (keywords too broad?) before resuming.
+- *Uncertain replies*: Message Queue → the job → "Check delivery with Instagram", or mark sent / retry.
+
+### Desktop release
+`pnpm --filter @affiliateos/desktop tauri build` → `apps/desktop/src-tauri/target/release/bundle/dmg/AffiliateOS_<version>_aarch64.dmg`. The app is ad-hoc signed: it opens normally when built on this Mac; on another Mac, right-click → Open (or sign with an Apple Developer ID).

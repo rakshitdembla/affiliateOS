@@ -1,4 +1,4 @@
-import type { ApiErrorBody, ActivityItem, Collection, CollectionDetail, ExtractionResult, HealthResponse, InstagramMedia, InstagramStatus, WebhookEventSummary, AnalyticsResponse, Automation, DmAttempt, DmJob, DmStatus, LogItem, MatchMode, QueueStats, RetryPolicy, SendResponse, OverviewResponse, Platform, Product, ProductList } from "@affiliateos/shared";
+import type { ApiErrorBody, ActivityItem, Collection, CollectionDetail, ExtractionResult, HealthResponse, InstagramMedia, InstagramStatus, WebhookEventSummary, AnalyticsResponse, Automation, BackupInfo, SystemStatus, DmAttempt, DmJob, DmStatus, LogItem, MatchMode, QueueStats, RetryPolicy, SendResponse, OverviewResponse, Platform, Product, ProductList } from "@affiliateos/shared";
 import { getToken } from "./secrets";
 
 const URL_KEY = "affiliateos.apiUrl";
@@ -114,6 +114,9 @@ export const api = {
   analytics: (q: AnalyticsQuery) => request<AnalyticsResponse>(`/api/v1/analytics?${new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined && v !== "") as [string, string][])}`),
   analyticsExport: (type: "daily" | "clicks" | "visits" | "messages", q: AnalyticsQuery) =>
     request<string>(`/api/v1/analytics/export?${new URLSearchParams([["type", type], ...(Object.entries(q).filter(([, v]) => v !== undefined && v !== "") as [string, string][])])}`, { text: true, timeoutMs: 60000 }),
+  systemStatus: () => request<SystemStatus>("/api/v1/system/status", { timeoutMs: 20000 }),
+  backups: () => request<{ items: BackupInfo[] }>("/api/v1/system/backups"),
+  backupNow: () => request<{ key: string; bytes: number }>("/api/v1/system/backup", { method: "POST", timeoutMs: 60000 }),
   deleteProduct: (id: string) => request<null>(`/api/v1/products/${id}`, { method: "DELETE" }),
   health: (o?: { baseUrl?: string }) => request<HealthResponse>("/health", { auth: false, ...o }),
   overview: (o?: { token?: string; baseUrl?: string }) => request<OverviewResponse>("/api/v1/overview", o),

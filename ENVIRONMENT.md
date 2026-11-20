@@ -14,6 +14,7 @@
 | `IG_WEBHOOK_VERIFY_TOKEN` | Worker secret | yes | Webhook subscription handshake (copy also in Keychain: service `com.affiliateos.setup`) |
 | `TOKEN_ENCRYPTION_KEY` | Worker secret | yes | base64 32-byte AES-256-GCM key for stored Instagram tokens. Rotating it means reconnecting Instagram |
 | `IG_GRAPH_BASE` | E2E only (`--var`) | no | Mock Instagram API base; ignored unless `http://localhost:<port>` |
+| `PUBLIC_RL` | `wrangler.jsonc` ratelimits binding | no | Per-IP limit (60/min) on recording public views/clicks |
 | `VITE_API_URL` | desktop build-time (optional) | no | Default API URL |
 | Desktop API token | macOS Keychain, service `com.affiliateos.desktop` | yes | Entered in Settings |
 

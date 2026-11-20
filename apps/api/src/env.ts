@@ -1,6 +1,8 @@
 export interface Env {
   DB: D1Database;
   IMAGES: R2Bucket;
+  /** Workers Rate Limiting: caps how often one IP can create view/click records. Optional (absent → no limit). */
+  PUBLIC_RL?: RateLimit;
   APP_VERSION: string;
   ALLOWED_ORIGINS: string;
   /** Public origin used for OAuth redirect/webhook URLs, e.g. https://affiliateos-api.<account>.workers.dev */

@@ -12,13 +12,23 @@ const SOURCE = /^[a-z0-9_-]{1,32}$/i;
 const isBot = (ua: string | undefined) => !ua || BOT_RE.test(ua);
 const cleanSource = (s: string | undefined) => (s && SOURCE.test(s) ? s.toLowerCase() : null);
 
+/**
+ * Per-IP cap on analytics writes from public pages. Visitors are always served; over the limit we just stop
+ * recording, so bots can't inflate analytics or burn the database write quota.
+ */
+async function canRecord(c: Context<{ Bindings: Env }>, kind: "view" | "click"): Promise<boolean> {
+  if (!c.env.PUBLIC_RL) return true;
+  const ip = c.req.header("CF-Connecting-IP") ?? "unknown";
+  try { return (await c.env.PUBLIC_RL.limit({ key: `${kind}:${ip}` })).success; } catch { return true; }
+}
+
 /** Run a write after responding when an execution context exists; otherwise await it (tests). */
-async function defer(c: Context, p: Promise<unknown>): Promise<void> {
+async function defer(c: Context<{ Bindings: Env }>, p: Promise<unknown>): Promise<void> {
   const safe = p.catch(() => undefined);
   try { c.executionCtx.waitUntil(safe); } catch { await safe; }
 }
 
-const html = (c: Context, body: string, status: 200 | 404 | 410 = 200, nonce?: string, cache = "no-store") =>
+const html = (c: Context<{ Bindings: Env }>, body: string, status: 200 | 404 | 410 = 200, nonce?: string, cache = "no-store") =>
   c.html(body, status, {
     "Cache-Control": cache,
     "Content-Security-Policy": `default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; script-src ${nonce ? `'nonce-${nonce}'` : "'none'"}; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
@@ -43,7 +53,7 @@ storefront.get("/c/:slug", async (c) => {
   const source = cleanSource(c.req.query("s"));
   const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
 
-  await defer(c, c.env.DB.prepare("INSERT INTO collection_views (id, collection_id, source, is_bot) VALUES (?,?,?,?)")
+  if (await canRecord(c, "view")) await defer(c, c.env.DB.prepare("INSERT INTO collection_views (id, collection_id, source, is_bot) VALUES (?,?,?,?)")
     .bind(crypto.randomUUID(), row.id, source, isBot(c.req.header("User-Agent")) ? 1 : 0).run());
   return html(c, renderCollectionPage(detail, products, { nonce, source }), 200, nonce, "public, max-age=60");
 });
@@ -62,7 +72,7 @@ storefront.get("/go/:id", async (c) => {
     const link = await c.env.DB.prepare("SELECT 1 x FROM collection_products WHERE collection_id = ? AND product_id = ?").bind(cq, id).first();
     if (link) collectionId = cq;
   }
-  await defer(c, c.env.DB.prepare("INSERT INTO click_events (id, product_id, collection_id, platform, source, is_bot) VALUES (?,?,?,?,?,?)")
+  if (await canRecord(c, "click")) await defer(c, c.env.DB.prepare("INSERT INTO click_events (id, product_id, collection_id, platform, source, is_bot) VALUES (?,?,?,?,?,?)")
     .bind(crypto.randomUUID(), p.id, collectionId, p.platform, cleanSource(c.req.query("s")), isBot(c.req.header("User-Agent")) ? 1 : 0).run()
     .catch((e) => log(c.env, { level: "error", module: "redirect", operation: "record_click", entityId: id, code: "click_write_failed", message: String(e?.message ?? e) })));
 

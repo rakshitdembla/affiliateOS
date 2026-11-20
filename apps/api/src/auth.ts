@@ -1,5 +1,6 @@
 import type { MiddlewareHandler } from "hono";
 import type { Env } from "./env";
+import { logThrottled } from "./logger";
 
 function timingSafeEqual(a: string, b: string): boolean {
   const enc = new TextEncoder();
@@ -21,6 +22,7 @@ export const requireAdmin: MiddlewareHandler<{ Bindings: Env }> = async (c, next
   const header = c.req.header("Authorization") ?? "";
   const m = /^Bearer\s+(.+)$/i.exec(header);
   if (!m || !timingSafeEqual(m[1]!, expected)) {
+    await logThrottled(c.env, { level: "warn", module: "auth", operation: `${c.req.method} ${new URL(c.req.url).pathname}`, code: "auth_failed", message: "Admin API request with a missing or wrong token" });
     return c.json({ error: { code: "unauthorized", message: "Missing or invalid credentials" } }, 401);
   }
   await next();

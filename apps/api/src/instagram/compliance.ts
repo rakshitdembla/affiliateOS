@@ -74,7 +74,7 @@ compliance.get("/privacy", (c) => {
 <li><b>Link clicks and page views</b> on collection pages: time, product, collection, a traffic-source label and whether the visitor looked like an automated crawler. No names, IP addresses or advertising identifiers are stored.</li></ul>
 <h2>How it is used</h2><p>Only to run the service: showing collections, redirecting to retailers, replying to comments that ask for a link, and counting clicks. Data is not sold, shared with advertisers or used for profiling.</p>
 <h2>Where it is stored</h2><p>On Cloudflare's infrastructure (Workers, D1, R2), operated by the account owner.</p>
-<h2>Retention and deletion</h2><p>Comment events are kept while needed to process the request and for troubleshooting. Removing the app from your Instagram settings, or sending a data deletion request through Instagram, deletes the stored account data and token. Data deletion callback: <code>${esc(cfg.dataDeletionUrl)}</code>.</p>
+<h2>Retention and deletion</h2><p>Raw comment events are deleted after 90 days; the text of comments attached to reply records is erased after 180 days; system logs are deleted after 90 days. Encrypted daily backups of the database are kept for 14 days. Removing the app from your Instagram settings, or sending a data deletion request through Instagram, deletes the stored account data and token. Data deletion callback: <code>${esc(cfg.dataDeletionUrl)}</code>.</p>
 <h2>Contact</h2><p>Questions or deletion requests: ${esc(contact)}.</p>
 </main></body></html>`;
   return c.html(body, 200, { ...htmlHeaders, "Cache-Control": "public, max-age=3600" });

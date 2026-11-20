@@ -23,8 +23,11 @@ test("first run: setup prompt, token verification and storage, then real (empty)
 
   await page.getByRole("link", { name: "Overview" }).click();
   for (const label of ["Products", "Collections", "Total clicks", "Pending DMs"]) await expect(page.getByRole("group", { name: label })).toContainText("0");
-  await expect(page.getByText("Not connected")).toBeVisible();
-  await expect(page.getByText(/No activity yet/)).toBeVisible();
+  await expect(page.getByText("Not connected", { exact: true })).toBeVisible();
+  // System checks surface what needs attention…
+  await expect(page.getByRole("region", { name: "Needs attention" })).toContainText("Instagram");
+  // …and the wrong-token attempt above is visible in recent activity (logged, throttled).
+  await expect(page.getByText(/Admin API request with a missing or wrong token/)).toBeVisible();
   await expect(page.getByText("Backend access not configured")).toBeHidden();
   await shot(page, "03-overview-connected");
 });

@@ -15,12 +15,17 @@ import { queue } from "./queue/routes";
 import { automations } from "./automations";
 import { logs } from "./logs";
 import { analytics } from "./analytics";
+import { system } from "./system";
 
 export const app = new Hono<{ Bindings: Env }>();
 
 app.use("*", async (c, next) => {
   await next();
   c.header("X-Content-Type-Options", "nosniff");
+  c.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  c.header("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()");
+  c.header("Cross-Origin-Opener-Policy", "same-origin");
+  if (!c.res.headers.has("Referrer-Policy")) c.header("Referrer-Policy", "strict-origin-when-cross-origin");
   if (!c.res.headers.has("Cache-Control")) c.header("Cache-Control", "no-store");
 });
 
@@ -112,6 +117,7 @@ api.route("/automations", automations);
 api.route("/queue", queue);
 api.route("/logs", logs);
 api.route("/analytics", analytics);
+api.route("/system", system);
 app.route("/api/v1", api);
 
 /** Public, immutable product images cached in R2. Keys are unguessable UUIDs. */

@@ -18,6 +18,8 @@ function Stat({ icon: Icon, label, value, hint }: { icon: typeof Package; label:
 export function Overview() {
   const health = useQuery({ queryKey: ["health"], queryFn: () => api.health(), refetchInterval: 30_000, retry: false });
   const overview = useQuery({ queryKey: ["overview"], queryFn: () => api.overview(), refetchInterval: 30_000, retry: false });
+  const system = useQuery({ queryKey: ["system", "status"], queryFn: () => api.systemStatus(), refetchInterval: 60_000, retry: false, enabled: !overview.isError });
+  const attention = system.data?.checks.filter((c) => c.status !== "ok") ?? [];
   const activity = useQuery({ queryKey: ["activity"], queryFn: () => api.activity(), retry: false });
 
   const o = overview.data;
@@ -40,6 +42,14 @@ export function Overview() {
               <Link to="/settings" className="mt-2 inline-block font-medium underline">Open Settings</Link>
             </div>
           </div>
+        </Card>
+      )}
+
+      {attention.length > 0 && (
+        <Card className={`mt-6 ${attention.some((c) => c.status === "error") ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"}`} role="region" aria-label="Needs attention">
+          <div className="text-sm font-medium">Needs attention</div>
+          <ul className="mt-1 space-y-0.5 text-sm">{attention.map((c) => <li key={c.id}><b>{c.label}:</b> <span className="text-muted">{c.detail}</span></li>)}</ul>
+          <Link to="/settings" className="mt-2 inline-block text-sm underline">System health</Link>
         </Card>
       )}
 

@@ -6,7 +6,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   "vars": {
-    "APP_VERSION": "0.6.0",
+    "APP_VERSION": "1.0.0",
     // Comma-separated browser origins allowed to call /api/* (Tauri webview + Vite dev server)
     "ALLOWED_ORIGINS": "tauri://localhost,http://tauri.localhost,http://localhost:1420",
     "PUBLIC_BASE_URL": "https://affiliateos-api.rakshitdembla.workers.dev",
@@ -16,6 +16,10 @@
   },
   // Secrets (never in this file): ADMIN_API_TOKEN, IG_APP_SECRET, META_APP_SECRET (optional), IG_WEBHOOK_VERIFY_TOKEN, TOKEN_ENCRYPTION_KEY
   "triggers": { "crons": ["17 3 * * *"] },
+  "workers_dev": true,
+  "preview_urls": false,
+  // Per-IP limit on view/click recording from public pages (60 per minute per IP and kind).
+  "ratelimits": [{ "name": "PUBLIC_RL", "namespace_id": "4801", "simple": { "limit": 60, "period": 60 } }],
   "d1_databases": [
     {
       "binding": "DB",

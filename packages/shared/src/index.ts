@@ -288,3 +288,8 @@ export interface AnalyticsResponse {
   bySource: (Breakdown & { visits: number })[];
   topProducts: Breakdown[];
 }
+
+// ---- System (Phase 7) ----
+export interface SystemCheck { id: string; label: string; status: "ok" | "warn" | "error"; detail: string }
+export interface SystemStatus { overall: "ok" | "warn" | "error"; checks: SystemCheck[]; time: string }
+export interface BackupInfo { key: string; size: number; uploaded: string; rows: number }

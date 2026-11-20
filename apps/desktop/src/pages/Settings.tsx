@@ -6,6 +6,7 @@ import { Badge, Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { ConfirmDialog } from "../components/Dialog";
 import { engine } from "../engine";
+import { SystemHealth } from "../components/SystemHealth";
 
 export function Settings() {
   const qc = useQueryClient();
@@ -66,6 +67,7 @@ export function Settings() {
         </div>
         {msg && <p role="status" className={msg.tone === "ok" ? "text-sm text-ok" : "text-sm text-bad"}>{msg.text}</p>}
       </Card>
+      {hasToken && <div className="mt-4"><SystemHealth /></div>}
     {confirmRemove && <ConfirmDialog title="Remove token?" message="The stored API token will be deleted from the macOS Keychain." confirmLabel="Remove" onConfirm={remove} onCancel={() => setConfirmRemove(false)} />}
     </div>
   );

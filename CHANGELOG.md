@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0 — Phase 7 (production hardening)
+- Security review (see SECURITY.md): per-IP rate limit on public analytics writes, throttled failed-auth logging, HSTS/Permissions-Policy/COOP headers, preview URLs disabled; dependency audit clean after migrating tests to `@cloudflare/vitest-plugin`; git history secret scan clean.
+- Backups: daily gzipped snapshot of all tables to R2 (14 kept) plus "Back up now"; `scripts/backup-to-sql.mjs` restore tool; restore drill passed. D1 Time Travel documented as the primary restore.
+- Retention: raw comment events 90 days, comment text 180 days, logs 90 days, heartbeats 30 days; privacy policy updated.
+- Monitoring: `/api/v1/system/status`, System health in Settings, "Needs attention" on the Overview; isolated, logged daily maintenance steps. Migration 0007.
+- Failure tests: storage failure during webhooks → 500 (Meta retries), broken R2 during maintenance, rate-limited visitors still served.
+- Tests: shared 18, API 162, desktop 40, E2E 11, Rust 3.
+
 ## 0.6.0 — Phase 6 (analytics)
 - Analytics API: visits, clicks (bots excluded and reported), clicks per visit, comments, replies sent/failed/skipped/pending/uncertain, success rate, daily series in the viewer's timezone, breakdowns by platform, source, collection and product; collection filter; CSV export (daily, clicks, visits, messages) with formula-injection protection.
 - Desktop Analytics page: range presets/custom range, collection filter, KPI tiles, daily chart with tooltip and table view, breakdowns, CSV export to ~/Downloads via a native command.

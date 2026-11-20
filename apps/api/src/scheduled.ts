@@ -6,6 +6,7 @@ import { saveRefreshedToken } from "./instagram/admin";
 import { GraphError, hostsFor, refreshLongLived } from "./instagram/graph";
 import { recoverStaleJobs } from "./queue/engine";
 import { ingestEvents } from "./queue/ingest";
+import { applyRetention, backupToR2, setState } from "./system";
 
 const DAY = 86_400_000;
 /** Refresh when fewer than this many days remain (long-lived tokens last ~60 days and must be ≥24h old to refresh). */
@@ -43,9 +44,20 @@ export async function refreshDueTokens(env: Env, now = new Date()): Promise<{ ch
   return out;
 }
 
+/** Daily maintenance. Each step is isolated so one failure can't stop the others; failures are logged as errors. */
 export async function runScheduled(env: Env): Promise<void> {
-  await refreshDueTokens(env);
-  await recoverStaleJobs(env);
-  if (env.PUBLIC_BASE_URL) await ingestEvents(env, env.PUBLIC_BASE_URL.replace(/\/+$/, ""));
+  const steps: [string, () => Promise<unknown>][] = [
+    ["refresh_tokens", () => refreshDueTokens(env)],
+    ["recover_jobs", () => recoverStaleJobs(env)],
+    ["ingest", async () => { if (env.PUBLIC_BASE_URL) await ingestEvents(env, env.PUBLIC_BASE_URL.replace(/\/+$/, "")); }],
+    ["retention", () => applyRetention(env)],
+    ["backup", () => backupToR2(env)],
+  ];
+  for (const [name, fn] of steps) {
+    try { await fn(); } catch (e) {
+      await log(env, { level: "error", module: "system", operation: `cron_${name}`, code: "cron_step_failed", message: `Daily maintenance step "${name}" failed: ${(e as Error).message}` });
+    }
+  }
+  await setState(env, "last_cron", new Date().toISOString());
   await env.DB.prepare("DELETE FROM oauth_states WHERE expires_at < ?").bind(new Date(Date.now() - DAY).toISOString()).run();
 }

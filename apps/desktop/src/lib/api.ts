@@ -1,4 +1,4 @@
-import type { ApiErrorBody, ActivityItem, Collection, CollectionDetail, ExtractionResult, HealthResponse, InstagramMedia, InstagramStatus, WebhookEventSummary, Automation, DmAttempt, DmJob, DmStatus, LogItem, MatchMode, QueueStats, RetryPolicy, SendResponse, OverviewResponse, Platform, Product, ProductList } from "@affiliateos/shared";
+import type { ApiErrorBody, ActivityItem, Collection, CollectionDetail, ExtractionResult, HealthResponse, InstagramMedia, InstagramStatus, WebhookEventSummary, AnalyticsResponse, Automation, DmAttempt, DmJob, DmStatus, LogItem, MatchMode, QueueStats, RetryPolicy, SendResponse, OverviewResponse, Platform, Product, ProductList } from "@affiliateos/shared";
 import { getToken } from "./secrets";
 
 const URL_KEY = "affiliateos.apiUrl";
@@ -13,7 +13,7 @@ export class ApiError extends Error {
   constructor(public code: string, message: string, public status?: number) { super(message); }
 }
 
-async function request<T>(path: string, opts: { auth?: boolean; timeoutMs?: number; token?: string; baseUrl?: string; method?: string; body?: unknown; raw?: { body: BodyInit; type: string } } = {}): Promise<T> {
+async function request<T>(path: string, opts: { auth?: boolean; timeoutMs?: number; token?: string; baseUrl?: string; method?: string; body?: unknown; raw?: { body: BodyInit; type: string }; text?: boolean } = {}): Promise<T> {
   const { auth = true, timeoutMs = 8000 } = opts;
   const headers: Record<string, string> = {};
   if (opts.body !== undefined) headers["Content-Type"] = "application/json";
@@ -34,6 +34,7 @@ async function request<T>(path: string, opts: { auth?: boolean; timeoutMs?: numb
     clearTimeout(timer);
   }
   let body: unknown = null;
+  if (opts.text && res.ok) return (await res.text()) as T;
   if (res.status !== 204) { try { body = await res.json(); } catch { /* non-JSON */ } }
   if (!res.ok && !(path === "/health" && body)) {
     const err = (body as ApiErrorBody | null)?.error;
@@ -50,6 +51,7 @@ export interface ProductInput {
 export interface AutomationInput {
   mediaId: string; reelName: string; mediaPermalink?: string | null; collectionId: string; keywords: string[]; matchMode: MatchMode; messageTemplate: string; isActive: boolean;
 }
+export interface AnalyticsQuery { from: string; to: string; tz: string; collectionId?: string }
 export interface ProductQuery { search?: string; platform?: string; status?: string; limit?: number; offset?: number }
 
 export const api = {
@@ -109,6 +111,9 @@ export const api = {
     return request<{ items: LogItem[]; facets: { modules: string[]; codes: string[] } }>(`/api/v1/logs?${sp}`);
   },
   engineLog: (e: { level: "info" | "warn" | "error"; operation: string; message: string; code?: string }) => request<unknown>("/api/v1/logs", { method: "POST", body: e }),
+  analytics: (q: AnalyticsQuery) => request<AnalyticsResponse>(`/api/v1/analytics?${new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined && v !== "") as [string, string][])}`),
+  analyticsExport: (type: "daily" | "clicks" | "visits" | "messages", q: AnalyticsQuery) =>
+    request<string>(`/api/v1/analytics/export?${new URLSearchParams([["type", type], ...(Object.entries(q).filter(([, v]) => v !== undefined && v !== "") as [string, string][])])}`, { text: true, timeoutMs: 60000 }),
   deleteProduct: (id: string) => request<null>(`/api/v1/products/${id}`, { method: "DELETE" }),
   health: (o?: { baseUrl?: string }) => request<HealthResponse>("/health", { auth: false, ...o }),
   overview: (o?: { token?: string; baseUrl?: string }) => request<OverviewResponse>("/api/v1/overview", o),

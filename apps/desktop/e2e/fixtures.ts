@@ -32,6 +32,7 @@ async function installTauriStub(page: Page, token: string | null) {
         if (cmd === "secret_set") { store[args.key] = args.value; localStorage.setItem(KEY, JSON.stringify(store)); return null; }
         if (cmd === "secret_delete") { delete store[args.key]; localStorage.setItem(KEY, JSON.stringify(store)); return null; }
         if (cmd === "plugin:opener|open_url") { ((window as any).__opened ??= []).push(args.url); return null; }
+        if (cmd === "save_export") { ((window as any).__exports ??= []).push(args); return `/Users/e2e/Downloads/${args.fileName}`; }
         throw new Error(`unexpected IPC command ${cmd}`);
       },
     };

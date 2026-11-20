@@ -270,3 +270,21 @@ export interface LogItem {
   code: string | null;
   message: string;
 }
+
+// ---- Analytics (Phase 6) ----
+export interface Breakdown { key: string; label: string; clicks: number; visits?: number }
+export interface DailyPoint { day: string; visits: number; clicks: number; sent: number; comments: number }
+export interface AnalyticsResponse {
+  range: { from: string; to: string; tzOffsetMinutes: number; collectionId: string | null };
+  totals: {
+    products: number; collections: number; publishedCollections: number;
+    visits: number; clicks: number; botVisits: number; botClicks: number;
+    comments: number; messagesQueued: number; messagesSent: number; messagesFailed: number; messagesSkipped: number;
+    messagesPending: number; messagesUncertain: number; successRate: number | null;
+  };
+  daily: DailyPoint[];
+  byPlatform: Breakdown[];
+  byCollection: (Breakdown & { visits: number; ctr: number | null })[];
+  bySource: (Breakdown & { visits: number })[];
+  topProducts: Breakdown[];
+}

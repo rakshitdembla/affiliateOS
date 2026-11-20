@@ -14,6 +14,7 @@ import { compliance } from "./instagram/compliance";
 import { queue } from "./queue/routes";
 import { automations } from "./automations";
 import { logs } from "./logs";
+import { analytics } from "./analytics";
 
 export const app = new Hono<{ Bindings: Env }>();
 
@@ -110,6 +111,7 @@ api.route("/instagram", igAdmin);
 api.route("/automations", automations);
 api.route("/queue", queue);
 api.route("/logs", logs);
+api.route("/analytics", analytics);
 app.route("/api/v1", api);
 
 /** Public, immutable product images cached in R2. Keys are unguessable UUIDs. */

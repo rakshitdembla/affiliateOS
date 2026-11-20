@@ -1,4 +1,5 @@
 use keyring::Entry;
+use tauri::Manager;
 
 const SERVICE: &str = "com.affiliateos.desktop";
 
@@ -36,8 +37,46 @@ fn secret_delete(key: String) -> Result<(), String> {
     }
 }
 
+/// Only plain CSV file names: letters, digits, dot, dash, underscore; must end in .csv.
+fn safe_csv_name(name: &str) -> Option<String> {
+    let cleaned: String = name.chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_')).take(120).collect();
+    if cleaned.starts_with('.') || !cleaned.to_ascii_lowercase().ends_with(".csv") || cleaned.len() < 5 {
+        return None;
+    }
+    Some(cleaned)
+}
+
+/// Save an analytics export into ~/Downloads (never overwrites) and reveal it in Finder.
+#[tauri::command]
+fn save_export(app: tauri::AppHandle, file_name: String, contents: String) -> Result<String, String> {
+    if contents.len() > 50 * 1024 * 1024 {
+        return Err("export is too large".into());
+    }
+    let name = safe_csv_name(&file_name).ok_or_else(|| "invalid file name".to_string())?;
+    let dir = app.path().download_dir().map_err(|_| "Downloads folder not found".to_string())?;
+    let stem = name.trim_end_matches(".csv").to_string();
+    let mut path = dir.join(&name);
+    let mut n = 1;
+    while path.exists() {
+        path = dir.join(format!("{stem}-{n}.csv"));
+        n += 1;
+    }
+    std::fs::write(&path, contents).map_err(|_| "could not write the file".to_string())?;
+    let _ = tauri_plugin_opener::reveal_item_in_dir(&path);
+    Ok(path.display().to_string())
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn csv_names_are_sanitized() {
+        assert_eq!(super::safe_csv_name("affiliateos-clicks-2026-11-01.csv").as_deref(), Some("affiliateos-clicks-2026-11-01.csv"));
+        assert_eq!(super::safe_csv_name("../../etc/passwd.csv"), None);
+        assert_eq!(super::safe_csv_name("report.exe"), None);
+        assert_eq!(super::safe_csv_name(".hidden.csv"), None);
+        assert_eq!(super::safe_csv_name("a b/c.csv").as_deref(), Some("abc.csv"));
+    }
+
     use super::*;
     /// Exercises the real macOS Keychain through the same `keyring` backend the app uses,
     /// with a separate service name so the app's real token is never touched.
@@ -66,7 +105,7 @@ mod tests {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![secret_get, secret_set, secret_delete])
+        .invoke_handler(tauri::generate_handler![secret_get, secret_set, secret_delete, save_export])
         .run(tauri::generate_context!())
         .expect("error while running AffiliateOS");
 }

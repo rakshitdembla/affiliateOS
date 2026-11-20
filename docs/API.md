@@ -100,3 +100,10 @@ Public:
 |---|---|---|
 | GET | `/api/v1/logs?level=error,warn&module=&code=&entity=&q=&from=&to=&before=&limit=` | Filtered entries (newest first) + facets (modules, codes) |
 | POST | `/api/v1/logs` | Desktop engine events (`module` is always `engine`) |
+
+## Analytics (Phase 6) — Bearer
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/v1/analytics?from=&to=&tz=&collectionId=` | Totals (human visits/clicks, bot visits/clicks shown separately, comments, reply counts, success rate = sent ÷ (sent + failed)), zero-filled daily series grouped in the viewer's timezone (`tz` = minutes east of UTC, e.g. 330), clicks by platform/source/collection (with clicks per visit), top products. Default range: last 30 days; max 400 days. With `collectionId`, comments = comments that matched an automation for that collection |
+| GET | `/api/v1/analytics/export?type=daily\|clicks\|visits\|messages&…` | CSV (all cells quoted; values starting with `= + - @` are prefixed with `'` to prevent spreadsheet formula injection) |

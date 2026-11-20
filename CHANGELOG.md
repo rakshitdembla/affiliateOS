@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0 — Phase 6 (analytics)
+- Analytics API: visits, clicks (bots excluded and reported), clicks per visit, comments, replies sent/failed/skipped/pending/uncertain, success rate, daily series in the viewer's timezone, breakdowns by platform, source, collection and product; collection filter; CSV export (daily, clicks, visits, messages) with formula-injection protection.
+- Desktop Analytics page: range presets/custom range, collection filter, KPI tiles, daily chart with tooltip and table view, breakdowns, CSV export to ~/Downloads via a native command.
+- Tests: shared 18, API 151, desktop 39, E2E 11 (real storefront traffic → dashboard → CSV), Rust 3.
+
 ## 0.5.0 — Phase 5 (automations and DM queue)
 - Automations: reel ↔ keywords ↔ collection, match modes (whole word / contains / exact), message templates with [COLLECTION_URL], [COLLECTION_NAME], [USERNAME], validation before activation, stats. Matching and template logic shared by Worker and desktop.
 - DM queue: jobs created from comment webhooks (one per comment, duplicates per person marked), leased atomic claiming, server-performed sends with an attempt token (no double sends), outcome classification per Meta's error codes, bounded backoff with jitter, 700/hour cap, crash recovery, 7-day window handling, delivery checks for uncertain sends via the Conversations API, manual retry/skip/mark-sent. Migration 0006.

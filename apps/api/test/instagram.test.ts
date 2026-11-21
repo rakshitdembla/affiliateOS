@@ -358,5 +358,7 @@ describe("Meta compliance callbacks", () => {
     const html = await res.text();
     expect(html).toContain("Privacy Policy");
     expect(html).toContain("https://aos.example/oauth/instagram/data-deletion");
+    const withEmail = await (await pub("/privacy", {}, { ...E, PRIVACY_CONTACT: "owner@example.com" })).text();
+    expect(withEmail).toContain('<a href="mailto:owner@example.com">owner@example.com</a>');
   });
 });

@@ -15,7 +15,9 @@
     "META_APP_ID": "1612067306883077",
     "FB_LOGIN_CONFIG_ID": "1599197921970843",
     "IG_APP_ID": "",
-    "IG_GRAPH_VERSION": "v27.0"
+    "IG_GRAPH_VERSION": "v27.0",
+    // Public contact shown on /privacy, /terms and /data-deletion.
+    "PRIVACY_CONTACT": "rakshitspeaks@gmail.com"
   },
   // Secrets (never in this file): ADMIN_API_TOKEN, META_APP_SECRET (Unified login), IG_APP_SECRET (Instagram Login only), IG_WEBHOOK_VERIFY_TOKEN, TOKEN_ENCRYPTION_KEY
   "triggers": { "crons": ["17 3 * * *"] },

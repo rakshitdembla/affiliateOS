@@ -5,6 +5,13 @@ import { log } from "../logger";
 import { esc, renderMessagePage } from "../storefront-render";
 import { igConfig, webhookSecrets } from "./config";
 
+/** Contact line for public pages: an email becomes a mailto link; anything else is shown as text. */
+const contactHtml = (contact: string | undefined): string => {
+  const c = contact?.trim();
+  if (c && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c)) return `<a href="mailto:${esc(c)}">${esc(c)}</a>`;
+  return esc(c || "a direct message to the Instagram account that operates this service");
+};
+
 /** Verify a Meta `signed_request` (HMAC-SHA256 over the base64url payload). Returns the payload or null. */
 export async function parseSignedRequest(signed: string, secrets: string[]): Promise<Record<string, any> | null> {
   const [sigPart, payloadPart] = signed.split(".", 2);
@@ -66,7 +73,6 @@ compliance.get("/oauth/instagram/deletion-status", async (c) => {
 
 compliance.get("/privacy", (c) => {
   const cfg = igConfig(c.env, c.req.url);
-  const contact = c.env.PRIVACY_CONTACT || "a direct message to the Instagram account that operates this service";
   const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Privacy Policy</title>
 <style>body{margin:0;background:#fff;color:#1c1917;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}main{max-width:720px;margin:0 auto;padding:48px 20px}h1{font:400 34px/1.2 Georgia,serif}h2{font-size:18px;margin-top:32px}li{margin:6px 0}small{color:#78716c}</style></head><body><main>
 <h1>Privacy Policy</h1><small>Last updated: 2026-11-20</small>
@@ -78,13 +84,12 @@ compliance.get("/privacy", (c) => {
 <h2>How it is used</h2><p>Only to run the service: showing collections, redirecting to retailers, replying to comments that ask for a link, and counting clicks. Data is not sold, shared with advertisers or used for profiling.</p>
 <h2>Where it is stored</h2><p>On Cloudflare's infrastructure (Workers, D1, R2), operated by the account owner.</p>
 <h2>Retention and deletion</h2><p>Raw comment events are deleted after 90 days; the text of comments attached to reply records is erased after 180 days; system logs are deleted after 90 days. Encrypted daily backups of the database are kept for 14 days. Removing the app from your Instagram settings, or sending a data deletion request through Instagram, deletes the stored account data and token. Data deletion callback: <code>${esc(cfg.dataDeletionUrl)}</code>.</p>
-<h2>Contact</h2><p>Questions or deletion requests: ${esc(contact)}.</p>
+<h2>Contact</h2><p>Questions or deletion requests: ${contactHtml(c.env.PRIVACY_CONTACT)}.</p>
 </main></body></html>`;
   return c.html(body, 200, { ...htmlHeaders, "Cache-Control": "public, max-age=3600" });
 });
 
 compliance.get("/terms", (c) => {
-  const contact = c.env.PRIVACY_CONTACT || "a direct message to the Instagram account that operates this service";
   const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Terms of Service</title>
 <style>body{margin:0;background:#fff;color:#1c1917;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}main{max-width:720px;margin:0 auto;padding:48px 20px}h1{font:400 34px/1.2 Georgia,serif}h2{font-size:18px;margin-top:32px}small{color:#78716c}</style></head><body><main>
 <h1>Terms of Service</h1><small>Last updated: 2026-11-22</small>
@@ -92,7 +97,7 @@ compliance.get("/terms", (c) => {
 <h2>Using the service</h2><p>Collection pages are free to view. Product links lead to third-party retailers (for example Amazon, Myntra and Meesho); purchases, prices, availability, delivery and returns are governed entirely by those retailers. As an affiliate, the operator may earn a commission on purchases made through these links at no extra cost to you.</p>
 <h2>Messages</h2><p>You receive at most one automatic reply per comment, and only when your comment asks for the link. You can stop further messages by not commenting the keyword, by restricting the account in Instagram, or by asking for your data to be deleted (see the Privacy Policy).</p>
 <h2>No warranty</h2><p>Information such as prices is collected from retailers and may be out of date. The service is provided “as is”, without warranties, and the operator is not liable for retailer products or transactions.</p>
-<h2>Changes and contact</h2><p>These terms may be updated; the date above changes when they are. Questions: ${esc(contact)}. See also the <a href="/privacy">Privacy Policy</a>.</p>
+<h2>Changes and contact</h2><p>These terms may be updated; the date above changes when they are. Questions: ${contactHtml(c.env.PRIVACY_CONTACT)}. See also the <a href="/privacy">Privacy Policy</a>.</p>
 </main></body></html>`;
   return c.html(body, 200, { ...htmlHeaders, "Cache-Control": "public, max-age=3600" });
 });
@@ -101,9 +106,8 @@ const PAGE_CSS = `body{margin:0;background:#fff;color:#1c1917;font:16px/1.65 -ap
 const shell = (title: string, inner: string) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${PAGE_CSS}</style></head><body><main>${inner}<p class="muted" style="margin-top:48px"><a href="/">Home</a> · <a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> · <a href="/data-deletion">Data deletion</a></p></main></body></html>`;
 
 compliance.get("/data-deletion", (c) => {
-  const contact = c.env.PRIVACY_CONTACT || "a direct message to the Instagram account that operates this service";
   return c.html(shell("Data deletion", `<h1>Delete your data</h1>
 <p>AffiliateOS stores very little about people who comment: the comment, your Instagram-scoped ID and username, and whether a reply was sent. It is used only to send the link you asked for.</p>
-<h2>If you commented on a reel</h2><p>Contact ${esc(contact)} and ask for your data to be deleted. Include your Instagram username. It is deleted within 30 days, and automatically after 90–180 days in any case.</p>
+<h2>If you commented on a reel</h2><p>Contact ${contactHtml(c.env.PRIVACY_CONTACT)} and ask for your data to be deleted. Include your Instagram username. It is deleted within 30 days, and automatically after 90–180 days in any case.</p>
 <h2>If you connected an Instagram account to the app</h2><p>Remove AffiliateOS from your Meta business settings or Instagram settings (Apps and websites). Meta notifies AffiliateOS and the stored account data and access token are deleted immediately. You will receive a confirmation code and a status page.</p>`), 200, { ...htmlHeaders, "Cache-Control": "public, max-age=3600" });
 });

@@ -1,11 +1,12 @@
 import { Hono, type Context } from "hono";
-import type { InstagramStatus, WebhookEventSummary } from "@affiliateos/shared";
+import type { InstagramStatus, PermissionCheck, WebhookEventSummary } from "@affiliateos/shared";
+import { getState, setState } from "../system";
 import type { Env } from "../env";
 import { encryptSecret, randomToken } from "../crypto";
 import { log } from "../logger";
 import { accountToken, getAccount, targetFor, toAccount, type AccountRow } from "./account";
 import { igConfig } from "./config";
-import { authorizeUrl, getIgAccount, getProfile, getSubscribedFields, GraphError, hostsFor, listMedia, refreshLongLived, subscribeWebhooks, unifiedAuthorizeUrl, unsubscribeWebhooks } from "./graph";
+import { authorizeUrl, getIgAccount, listConversations, mediaComments, getProfile, getSubscribedFields, GraphError, hostsFor, listMedia, refreshLongLived, subscribeWebhooks, unifiedAuthorizeUrl, unsubscribeWebhooks } from "./graph";
 
 const bad = (c: Context, code: string, message: string, status: 400 | 404 | 409 | 502 | 503) => c.json({ error: { code, message } }, status);
 
@@ -24,6 +25,7 @@ async function status(env: Env, url: string): Promise<InstagramStatus> {
     },
     account: a ? toAccount(a) : null,
     webhooks: { total: s?.total ?? 0, last24h: s?.day ?? 0, lastReceivedAt: s?.last ?? null, lastSignatureKey: lastSig?.signature_key ?? null },
+    permissionChecks: a ? JSON.parse((await getState(env, "ig_permission_checks")) ?? "null") : null,
   };
 }
 
@@ -74,6 +76,25 @@ igAdmin.post("/check", async (c) => {
     await c.env.DB.prepare(
       "UPDATE instagram_accounts SET username = ?, account_type = ?, profile_picture_url = ?, status = 'connected', last_error = NULL, last_checked_at = ?, webhooks_subscribed = ?, updated_at = ? WHERE id = ?",
     ).bind(p.username, p.accountType, p.profilePictureUrl, now, subscribed === null ? a.webhooks_subscribed : subscribed ? 1 : 0, now, a.id).run();
+
+    // Read-only self-test of each permission (Meta requires successful calls before Advanced Access can be requested).
+    const t = targetFor(c.env, a);
+    const results: PermissionCheck[] = [{ permission: a.login_mode === "unified" ? "instagram_basic" : "instagram_business_basic", call: "Read profile", ok: true, detail: `@${p.username ?? a.ig_user_id}` }];
+    const run = async (permission: string, label: string, fn: () => Promise<string>) => {
+      try { results.push({ permission, call: label, ok: true, detail: await fn() }); }
+      catch (e) { results.push({ permission, call: label, ok: false, detail: (e as Error).message }); }
+    };
+    const basic = a.login_mode === "unified" ? "instagram_basic" : "instagram_business_basic";
+    const comments = a.login_mode === "unified" ? "instagram_manage_comments" : "instagram_business_manage_comments";
+    const messages = a.login_mode === "unified" ? "instagram_manage_messages" : "instagram_business_manage_messages";
+    let firstMedia: string | null = null;
+    await run(basic, "List recent media", async () => { const m = await listMedia(t, token, cfg.version, { limit: 3 }); firstMedia = m.items[0]?.id ?? null; return `${m.items.length} item(s)`; });
+    await run(comments, "Webhook subscription", async () => `subscribed fields: ${(await getSubscribedFields(t, token, cfg.version)).join(", ") || "none"}`);
+    if (firstMedia) await run(comments, "Read comments on latest post", async () => `${await mediaComments(t, token, cfg.version, firstMedia!)} comment(s) returned`);
+    else results.push({ permission: comments, call: "Read comments on latest post", ok: false, detail: "No posts on the account to read comments from" });
+    await run(messages, "List conversations (read-only)", async () => `${await listConversations(t, token, cfg.version)} conversation(s) returned`);
+    await setState(c.env, "ig_permission_checks", JSON.stringify({ at: now, results }));
+    await log(c.env, { level: results.every((r) => r.ok) ? "info" : "warn", persist: true, module: "instagram", operation: "permission_check", message: `Permission self-test: ${results.filter((r) => r.ok).length}/${results.length} calls succeeded${results.some((r) => !r.ok) ? ` (failed: ${results.filter((r) => !r.ok).map((r) => r.call).join(", ")})` : ""}` });
     return c.json(await status(c.env, c.req.url));
   } catch (e) {
     return graphFailure(c, a, e, "check");

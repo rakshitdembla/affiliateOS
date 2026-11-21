@@ -241,3 +241,15 @@ export async function getIgAccount(h: Hosts, token: string, version: string, igI
   const b = await call(withParams(`${h.fb}/${version}/${encodeURIComponent(igId)}`, { fields: "id,username,profile_picture_url", access_token: token }));
   return { id: String(b.id ?? igId), username: b.username ?? null, profilePictureUrl: b.profile_picture_url ?? null };
 }
+
+/** Read-only: latest comments on one of the account's posts (exercises instagram_manage_comments). */
+export async function mediaComments(t: Target, token: string, version: string, mediaId: string) {
+  const b = await call(withParams(`${t.host}/${version}/${encodeURIComponent(mediaId)}/comments`, { fields: "id,timestamp", limit: "1", access_token: token }));
+  return Array.isArray(b?.data) ? b.data.length : 0;
+}
+
+/** Read-only: conversation list (exercises instagram_manage_messages). Sends nothing. */
+export async function listConversations(t: Target, token: string, version: string) {
+  const b = await call(withParams(`${t.host}/${version}/${t.node}/conversations`, { platform: "instagram", limit: "1", access_token: token }));
+  return Array.isArray(b?.data) ? b.data.length : 0;
+}

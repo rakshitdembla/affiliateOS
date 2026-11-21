@@ -11,6 +11,7 @@ const H = { Authorization: "Bearer test-token", "Content-Type": "application/jso
 const admin = (path: string, init: RequestInit = {}, e: any = E) => app.request(path, { ...init, headers: { ...H, ...(init.headers as object) } }, e);
 const pub = (path: string, init: RequestInit = {}, e: any = E) => app.request(path, init, e);
 const db = env.DB;
+const graphErr = () => new Response(JSON.stringify({ error: { message: "(#10) Permission denied", code: 10 } }), { status: 400, headers: { "content-type": "application/json" } });
 const json = (b: unknown, status = 200) => new Response(typeof b === "string" ? b : JSON.stringify(b), { status, headers: { "content-type": "application/json" } });
 function mock(routes: [RegExp, (u: URL, init?: RequestInit) => Response][]) {
   const calls: { url: URL; init?: RequestInit }[] = [];
@@ -97,14 +98,33 @@ describe("Unified login (Facebook Login for Business)", () => {
     expect((await r.json<any>()).error.message).toMatch(/doesn't expire/);
   });
 
-  it("check reads the Instagram account and subscriptions on graph.facebook.com", async () => {
+  it("check reads the account and runs a read-only self-test of every permission (no messages sent)", async () => {
     await seedUnified();
-    mock([
+    const calls = mock([
       [new RegExp(`graph\\.facebook\\.com/v27\\.0/${IG}\\?fields=`), () => json({ id: IG, username: "trendism.in", profile_picture_url: "https://cdn/x.jpg" })],
       [new RegExp(`graph\\.facebook\\.com/v27\\.0/${IG}/subscribed_apps\\?`), () => json({ data: [{ subscribed_fields: ["comments"] }] })],
+      [new RegExp(`graph\\.facebook\\.com/v27\\.0/${IG}/media\\?`), () => json({ data: [{ id: "18000000000000777", media_type: "VIDEO" }] })],
+      [/graph\.facebook\.com\/v27\.0\/18000000000000777\/comments\?/, () => json({ data: [{ id: "c1" }] })],
+      [new RegExp(`graph\\.facebook\\.com/v27\\.0/${IG}/conversations\\?`), () => graphErr()],
     ]);
     const s: any = await (await admin("/api/v1/instagram/check", { method: "POST" })).json();
     expect(s.account).toMatchObject({ username: "trendism.in", webhooksSubscribed: true, status: "connected" });
+    const r = s.permissionChecks.results;
+    expect(r.map((x: any) => [x.permission, x.ok])).toEqual([
+      ["instagram_basic", true], ["instagram_basic", true], ["instagram_manage_comments", true], ["instagram_manage_comments", true], ["instagram_manage_messages", false],
+    ]);
+    expect(r.at(-1).detail).toMatch(/Permission denied/);
+    expect(calls.every((c) => !c.url.pathname.endsWith("/messages") && (c.init?.method ?? "GET") === "GET")).toBe(true);
+    const again: any = await (await admin("/api/v1/instagram/status")).json();
+    expect(again.permissionChecks.results).toHaveLength(5);
+  });
+
+  it("serves the public home page and data deletion instructions", async () => {
+    for (const [path, text] of [["/", "one private reply"], ["/data-deletion", "Delete your data"]] as const) {
+      const res = await pub(path);
+      expect(res.status).toBe(200);
+      expect(await res.text()).toContain(text);
+    }
   });
 
   it("a verified deauthorize from Meta disconnects the Unified login account", async () => {

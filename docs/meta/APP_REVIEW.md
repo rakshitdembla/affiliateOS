@@ -24,6 +24,9 @@ Meta requires **Advanced Access** for comment webhooks, even for your own accoun
 | User data deletion (callback URL) | App settings → Basic and FB Login for Business → Settings | https://affiliateos-api.rakshitdembla.workers.dev/oauth/instagram/data-deletion | ✅ returns `{url, confirmation_code}` for a valid signed request |
 | Deauthorize callback | FB Login for Business → Settings | https://affiliateos-api.rakshitdembla.workers.dev/oauth/instagram/deauthorize | ✅ |
 | App domain | App settings → Basic | affiliateos-api.rakshitdembla.workers.dev | ☐ |
+| Website platform (Site URL) | App settings → Basic → Add platform → Website | https://affiliateos-api.rakshitdembla.workers.dev/ (public home page explaining the service) | ✅ live |
+| Data deletion instructions URL (if Meta asks for instructions instead of a callback) | App settings → Basic | https://affiliateos-api.rakshitdembla.workers.dev/data-deletion | ✅ live |
+| **Successful API call for each permission** | AffiliateOS → Instagram → Check connection | permission self-test: all ✓ (read-only, sends nothing) | ☐ after connecting |
 | Webhook verified + `comments` subscribed | Webhooks (Instagram object) | https://affiliateos-api.rakshitdembla.workers.dev/webhooks/instagram | ☐ (token on your clipboard) |
 | `META_APP_SECRET` on the server | Terminal | `pnpm exec wrangler secret put META_APP_SECRET` | ☐ you |
 
@@ -66,22 +69,23 @@ Record the Mac screen, plus a phone screen (QuickTime mirroring, or film the pho
    - back in AffiliateOS, show "Connected as @trendism.in".
 
    *Caption: "The creator connects their own Instagram professional account."*
-2. **instagram_basic.** On the Instagram page, show the profile and the **Recent posts and reels** grid. *Caption: "instagram_basic: profile and media list, used to pick a reel."*
-3. **Create an automation (instagram_basic).** Automations → **New automation**:
+2. **Permission self-test.** Click **Check connection** and show the **Permission self-test** list: every permission ✓, using read-only calls. *Caption: "Each permission in use; nothing is posted or sent."*
+3. **instagram_basic.** On the Instagram page, show the profile and the **Recent posts and reels** grid. *Caption: "instagram_basic: profile and media list, used to pick a reel."*
+4. **Create an automation (instagram_basic).** Automations → **New automation**:
    - pick the reel from the grid;
    - choose a published collection;
    - keyword "LINK";
    - show the message preview with the collection link;
    - Save (Active).
-4. **Webhook subscription (instagram_manage_comments).** On the Instagram page, show **Comment webhooks: Subscribed**.
-5. **A follower asks.** On the phone, from a second Instagram account, comment **"LINK"** on that reel. *Caption: "A follower comments LINK to request the link."*
-6. **Comment received (instagram_manage_comments).** In AffiliateOS → Instagram → **Webhook events**, show the comment (@username, "LINK", received). Then Message Queue shows the reply job.
-7. **Private reply sent (instagram_manage_messages).**
+5. **Webhook subscription (instagram_manage_comments).** On the Instagram page, show **Comment webhooks: Subscribed**.
+6. **A follower asks.** On the phone, from a second Instagram account, comment **"LINK"** on that reel. *Caption: "A follower comments LINK to request the link."*
+7. **Comment received (instagram_manage_comments).** In AffiliateOS → Instagram → **Webhook events**, show the comment (@username, "LINK", received). Then Message Queue shows the reply job.
+8. **Private reply sent (instagram_manage_messages).**
    - Message Queue: the job goes from **pending** to **sent**. Open it to show the reply text and the attempt history.
    - On the phone (second account), show the private reply arriving in **Messages / Requests** with the link, and tap it to open the collection page.
 
    *Caption: "One private reply, sent only because the follower asked."*
-8. **Safeguards.** Comment "LINK" again from the same account and show the second job marked **skipped — duplicate**. Show the **Logs** page entry for the send.
+9. **Safeguards.** Comment "LINK" again from the same account and show the second job marked **skipped — duplicate**. Show the **Logs** page entry for the send.
 
 **If comment webhooks don't arrive before approval** (Meta says the app must be Live with Advanced Access):
 - record steps 1–4 for real;

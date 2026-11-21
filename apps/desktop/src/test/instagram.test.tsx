@@ -18,7 +18,7 @@ import { Instagram } from "../pages/Instagram";
 const m = api as unknown as Record<string, ReturnType<typeof vi.fn>>;
 const base = (o: Partial<InstagramStatus> = {}): InstagramStatus => ({
   config: { ready: true, loginMode: "instagram", missing: [], graphVersion: "v27.0", metaSecretConfigured: false, redirectUri: "https://x.dev/oauth/instagram/callback", webhookUrl: "https://x.dev/webhooks/instagram", privacyUrl: "https://x.dev/privacy", deauthorizeUrl: "https://x.dev/oauth/instagram/deauthorize", dataDeletionUrl: "https://x.dev/oauth/instagram/data-deletion" },
-  account: null, webhooks: { total: 0, last24h: 0, lastReceivedAt: null, lastSignatureKey: null }, ...o,
+  account: null, webhooks: { total: 0, last24h: 0, lastReceivedAt: null, lastSignatureKey: null }, permissionChecks: null, ...o,
 });
 const connected = (): InstagramStatus => base({ account: { igUserId: "1784", username: "trendism.in", accountType: "BUSINESS", profilePictureUrl: null, status: "connected", scopes: ["instagram_business_basic"], tokenExpiresAt: new Date(Date.now() + 45 * 86_400_000).toISOString(), tokenRefreshedAt: new Date().toISOString(), webhooksSubscribed: true, lastCheckedAt: null, lastError: null, connectedAt: new Date().toISOString(), loginMode: "instagram" } });
 const wrap = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><Instagram /></MemoryRouter></QueryClientProvider>);

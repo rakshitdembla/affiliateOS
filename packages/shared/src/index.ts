@@ -150,7 +150,10 @@ export interface InstagramStatus {
   };
   account: InstagramAccount | null;
   webhooks: { total: number; last24h: number; lastReceivedAt: string | null; lastSignatureKey: string | null };
+  /** Result of the last read-only permission self-test (Check connection). */
+  permissionChecks: { at: string; results: PermissionCheck[] } | null;
 }
+export interface PermissionCheck { permission: string; call: string; ok: boolean; detail: string }
 export interface InstagramMedia {
   id: string;
   caption: string | null;

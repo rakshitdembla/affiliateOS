@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1 — App Review readiness
+- Check connection runs a read-only self-test of each permission (Meta requires successful calls before Advanced Access can be requested); results shown on the Instagram page.
+- Public home page, data-deletion instructions page and Terms of Service; 1024px app icon; App Review pack (`docs/meta/APP_REVIEW.md`).
+
 ## 1.1.0 — Meta Unified login
 - Meta no longer lets new apps use Instagram Login; added **Unified login** (Facebook Login for Business with a login configuration, graph.facebook.com, Meta app secret, non-expiring system-user token owned by the business portfolio). Instagram Login remains supported for existing apps (`IG_LOGIN_MODE`). Migration 0008 (`login_mode`).
 - Webhook handshake failures are logged with a diagnosis (length/whitespace/charset) without revealing tokens.

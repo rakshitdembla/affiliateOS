@@ -96,3 +96,14 @@ compliance.get("/terms", (c) => {
 </main></body></html>`;
   return c.html(body, 200, { ...htmlHeaders, "Cache-Control": "public, max-age=3600" });
 });
+
+const PAGE_CSS = `body{margin:0;background:#fff;color:#1c1917;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}main{max-width:720px;margin:0 auto;padding:48px 20px}h1{font:400 38px/1.2 Georgia,serif;margin:0 0 8px}h2{font-size:18px;margin-top:32px}a{color:#1c1917}small,.muted{color:#78716c}nav a{margin-right:16px}`;
+const shell = (title: string, inner: string) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${PAGE_CSS}</style></head><body><main>${inner}<p class="muted" style="margin-top:48px"><a href="/">Home</a> · <a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> · <a href="/data-deletion">Data deletion</a></p></main></body></html>`;
+
+compliance.get("/data-deletion", (c) => {
+  const contact = c.env.PRIVACY_CONTACT || "a direct message to the Instagram account that operates this service";
+  return c.html(shell("Data deletion", `<h1>Delete your data</h1>
+<p>AffiliateOS stores very little about people who comment: the comment, your Instagram-scoped ID and username, and whether a reply was sent. It is used only to send the link you asked for.</p>
+<h2>If you commented on a reel</h2><p>Contact ${esc(contact)} and ask for your data to be deleted. Include your Instagram username. It is deleted within 30 days, and automatically after 90–180 days in any case.</p>
+<h2>If you connected an Instagram account to the app</h2><p>Remove AffiliateOS from your Meta business settings or Instagram settings (Apps and websites). Meta notifies AffiliateOS and the stored account data and access token are deleted immediately. You will receive a confirmation code and a status page.</p>`), 200, { ...htmlHeaders, "Cache-Control": "public, max-age=3600" });
+});

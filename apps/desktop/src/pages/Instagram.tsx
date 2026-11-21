@@ -235,6 +235,17 @@ export function Instagram() {
               </dl>
               <p className="text-xs text-muted">{a.loginMode === "unified" ? "Connected with Meta Unified login (system-user token owned by your business portfolio)." : "Tokens are refreshed automatically by a daily Cloudflare job when fewer than 20 days remain."} Permissions granted: {a.scopes.join(", ") || "—"}.</p>
               {a.lastError && <p role="alert" className="rounded-md bg-amber-50 p-2 text-sm text-warn">{a.lastError}</p>}
+              <div className="rounded-md border border-border p-3 text-sm">
+                <div className="flex items-center justify-between"><span className="font-medium">Permission self-test</span><span className="text-xs text-muted">{s.permissionChecks ? `last run ${fmt(s.permissionChecks.at)}` : "run “Check connection”"}</span></div>
+                <p className="mt-0.5 text-xs text-muted">Read-only calls for each permission; nothing is posted or sent. Meta requires successful calls before Advanced Access can be requested.</p>
+                {s.permissionChecks && (
+                  <ul className="mt-2 space-y-1" aria-label="Permission self-test">
+                    {s.permissionChecks.results.map((r, i) => (
+                      <li key={i} className="flex flex-wrap items-center gap-2 text-xs">{r.ok ? <Check size={13} className="text-ok" aria-label="passed" /> : <X size={13} className="text-bad" aria-label="failed" />}<code>{r.permission}</code><span>{r.call}</span><span className="text-muted">— {r.detail}</span></li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           )}
         </Card>

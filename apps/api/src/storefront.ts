@@ -37,7 +37,15 @@ const html = (c: Context<{ Bindings: Env }>, body: string, status: 200 | 404 | 4
 
 export const storefront = new Hono<{ Bindings: Env }>();
 
-storefront.get("/", (c) => html(c, renderMessagePage("AffiliateOS", "Private storefront.")));
+/** Public home page (what reviewers and visitors see at the app's website). */
+storefront.get("/", (c) => c.html(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AffiliateOS</title><meta name="description" content="Shoppable outfit collections from @trendism.in, with links sent on request.">
+<style>body{margin:0;background:#fff;color:#1c1917;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}main{max-width:720px;margin:0 auto;padding:56px 20px}h1{font:400 44px/1.15 Georgia,serif;margin:0 0 12px}h2{font-size:18px;margin-top:32px}a{color:#1c1917}.muted{color:#78716c}</style></head><body><main>
+<h1>AffiliateOS</h1><p class="muted">The shopping-link service behind the Instagram creator @trendism.in.</p>
+<h2>What it does</h2><p>The creator posts outfit reels. When you comment the keyword shown in the reel (for example “LINK”), you get <b>one private reply</b> on Instagram with a link to a collection page listing the products from that reel, at retailers such as Amazon, Myntra and Meesho.</p>
+<h2>How messages work</h2><ul><li>Replies are sent only when you comment the keyword, through Instagram's official private-reply feature.</li><li>One reply per comment, at most one per person per reel, and only within 7 days of the comment.</li><li>No marketing messages, no follow-ups, no sharing or selling of your data.</li></ul>
+<h2>Affiliate disclosure</h2><p>Collection pages contain affiliate links; the creator may earn a commission on purchases at no extra cost to you.</p>
+<p class="muted" style="margin-top:48px"><a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> · <a href="/data-deletion">Data deletion</a></p>
+</main></body></html>`, 200, { "Cache-Control": "public, max-age=3600", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'" }));
 storefront.get("/robots.txt", (c) => c.text("User-agent: *\nDisallow: /go/\nDisallow: /api/\nAllow: /c/\n", 200, { "Cache-Control": "public, max-age=3600" }));
 
 storefront.get("/c/:slug", async (c) => {

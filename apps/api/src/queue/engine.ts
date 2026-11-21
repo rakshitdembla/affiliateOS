@@ -1,9 +1,9 @@
 import { MAX_MESSAGE_BYTES, PRIVATE_REPLY_WINDOW_MS, normalizeText, type DmJob, type RetryPolicy, type SendResponse, utf8Bytes } from "@affiliateos/shared";
 import type { Env } from "../env";
 import { log } from "../logger";
-import { accountToken, getAccount } from "../instagram/account";
+import { accountToken, getAccount, targetFor } from "../instagram/account";
 import { igConfig } from "../instagram/config";
-import { hostsFor, recentMessagesWith, sendPrivateReply } from "../instagram/graph";
+import { recentMessagesWith, sendPrivateReply } from "../instagram/graph";
 import { collectionLink } from "./ingest";
 import { JOB_SELECT, getJobRow, toJob, type Row } from "./jobs";
 import { backoffSeconds, clampPolicy, classifySendError, HOURLY_CAP, LEASE_MS, WINDOW_MARGIN_MS } from "./policy";
@@ -114,7 +114,7 @@ export async function sendJob(env: Env, base: string, id: string, workerId: stri
   if (start.meta.changes !== 1) return conflict("Another request started this send first.");
 
   const t0 = Date.now();
-  const result = await sendPrivateReply(hostsFor(env), { token, version: igConfig(env, base).version, igUserId: account.ig_user_id, commentId: row.comment_id, text: message });
+  const result = await sendPrivateReply(targetFor(env, account), { token, version: igConfig(env, base).version, igUserId: account.ig_user_id, commentId: row.comment_id, text: message });
   const duration = Date.now() - t0;
   const attemptNo = row.attempt_count + 1;
   const done = iso(new Date());
@@ -203,7 +203,7 @@ export async function reconcileJob(env: Env, id: string, now = new Date()): Prom
 
   let found;
   try {
-    found = await recentMessagesWith(hostsFor(env), { token: await accountToken(env, account), version: igConfig(env, "https://x").version, userId: row.recipient_ref, since: Date.parse(startedAt ?? row.received_at) - 5 * 60_000 });
+    found = await recentMessagesWith(targetFor(env, account), { token: await accountToken(env, account), version: igConfig(env, "https://x").version, userId: row.recipient_ref, since: Date.parse(startedAt ?? row.received_at) - 5 * 60_000 });
   } catch (e) {
     return keepUncertain(`Automatic delivery check failed: ${(e as Error).message}. Check the conversation in Instagram, then mark it as sent or retry.`);
   }

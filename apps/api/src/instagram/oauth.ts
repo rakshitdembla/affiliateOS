@@ -4,7 +4,7 @@ import { encryptSecret } from "../crypto";
 import { log, logThrottled } from "../logger";
 import { renderMessagePage } from "../storefront-render";
 import { igConfig } from "./config";
-import { exchangeCode, exchangeLongLived, getProfile, GraphError, hostsFor, subscribeWebhooks } from "./graph";
+import { assignedInstagramAccounts, exchangeCode, exchangeCodeUnified, exchangeLongLived, getProfile, GraphError, hostsFor, subscribeWebhooks } from "./graph";
 
 const STATE_RE = /^[A-Za-z0-9_-]{20,100}$/;
 
@@ -44,17 +44,39 @@ oauthPublic.get("/oauth/instagram/callback", async (c) => {
 
   try {
     const h = hostsFor(env);
-    const short = await exchangeCode(h, { appId: env.IG_APP_ID!.trim(), appSecret: env.IG_APP_SECRET!, redirectUri: cfg.redirectUri, code });
-    const long = await exchangeLongLived(h, env.IG_APP_SECRET!, short.accessToken);
-    const profile = await getProfile(h, long.accessToken, cfg.version);
-    const igUserId = profile.userId ?? short.userId;
-    const tokenEnc = await encryptSecret(long.accessToken, env.TOKEN_ENCRYPTION_KEY!, igUserId);
-    const expiresAt = long.expiresIn > 0 ? new Date(Date.now() + long.expiresIn * 1000).toISOString() : null;
+    let token: string;
+    let igUserId: string;
+    let appScopedId: string | null = null;
+    let username: string | null;
+    let accountType: string | null = null;
+    let picture: string | null;
+    let expiresIn: number;
+    let permissions: string[];
+    if (cfg.mode === "unified") {
+      const t = await exchangeCodeUnified(h, { appId: env.META_APP_ID!.trim(), appSecret: env.META_APP_SECRET!, redirectUri: cfg.redirectUri, code, version: cfg.version });
+      const accounts = await assignedInstagramAccounts(h, t.accessToken, cfg.version);
+      if (!accounts.length) {
+        await log(env, { level: "error", module: "instagram", operation: "oauth_exchange", code: "no_instagram_account", message: "Login completed but no Instagram professional account was shared with the app" });
+        return page(c, "No Instagram account selected", "The login finished, but no Instagram professional account was shared with AffiliateOS. Start again and select your Instagram account when Meta asks which assets to share.", 400);
+      }
+      const a = accounts[0]!;
+      if (accounts.length > 1) await log(env, { level: "warn", module: "instagram", operation: "oauth_exchange", code: "multiple_accounts", message: `${accounts.length} Instagram accounts were shared; using @${a.username ?? a.id}` });
+      [token, igUserId, username, picture, expiresIn, permissions] = [t.accessToken, a.id, a.username, a.profilePictureUrl, t.expiresIn, ["instagram_basic", "instagram_manage_comments", "instagram_manage_messages"]];
+    } else {
+      const short = await exchangeCode(h, { appId: env.IG_APP_ID!.trim(), appSecret: env.IG_APP_SECRET!, redirectUri: cfg.redirectUri, code });
+      const long = await exchangeLongLived(h, env.IG_APP_SECRET!, short.accessToken);
+      const profile = await getProfile(h, long.accessToken, cfg.version);
+      [token, igUserId, appScopedId, username, accountType, picture, expiresIn, permissions] =
+        [long.accessToken, profile.userId ?? short.userId, profile.id, profile.username, profile.accountType, profile.profilePictureUrl, long.expiresIn, short.permissions];
+    }
+    const tokenEnc = await encryptSecret(token, env.TOKEN_ENCRYPTION_KEY!, igUserId);
+    const expiresAt = expiresIn > 0 ? new Date(Date.now() + expiresIn * 1000).toISOString() : null; // Unified login tokens may never expire
+    const target = cfg.mode === "unified" ? { host: h.fb, node: igUserId } : { host: h.graph, node: "me" };
 
     let subscribed = 0;
     let lastError: string | null = null;
     try {
-      await subscribeWebhooks(h, long.accessToken, cfg.version, ["comments"]);
+      await subscribeWebhooks(target, token, cfg.version, ["comments"]);
       subscribed = 1;
     } catch (e) {
       lastError = `Webhook subscription failed: ${(e as Error).message}`;
@@ -66,17 +88,18 @@ oauthPublic.get("/oauth/instagram/callback", async (c) => {
       env.DB.prepare("DELETE FROM instagram_accounts WHERE ig_user_id != ?").bind(igUserId),
       env.DB.prepare(
         `INSERT INTO instagram_accounts (id, ig_user_id, app_scoped_id, username, account_type, profile_picture_url, access_token_enc,
-           token_expires_at, token_refreshed_at, scopes, status, webhooks_subscribed, last_error, last_checked_at, connected_at, updated_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,'connected',?,?,?,?,?)
+           token_expires_at, token_refreshed_at, scopes, status, webhooks_subscribed, last_error, last_checked_at, connected_at, updated_at, login_mode)
+         VALUES (?,?,?,?,?,?,?,?,?,?,'connected',?,?,?,?,?,?)
          ON CONFLICT(ig_user_id) DO UPDATE SET app_scoped_id=excluded.app_scoped_id, username=excluded.username, account_type=excluded.account_type,
            profile_picture_url=excluded.profile_picture_url, access_token_enc=excluded.access_token_enc, token_expires_at=excluded.token_expires_at,
            token_refreshed_at=excluded.token_refreshed_at, scopes=excluded.scopes, status='connected', webhooks_subscribed=excluded.webhooks_subscribed,
-           last_error=excluded.last_error, last_checked_at=excluded.last_checked_at, connected_at=excluded.connected_at, updated_at=excluded.updated_at`,
-      ).bind(crypto.randomUUID(), igUserId, profile.id, profile.username, profile.accountType, profile.profilePictureUrl, tokenEnc, expiresAt, now,
-        short.permissions.join(","), subscribed, lastError, now, now, now),
+           last_error=excluded.last_error, last_checked_at=excluded.last_checked_at, connected_at=excluded.connected_at, updated_at=excluded.updated_at,
+           login_mode=excluded.login_mode`,
+      ).bind(crypto.randomUUID(), igUserId, appScopedId, username, accountType, picture, tokenEnc, expiresAt, now,
+        permissions.join(","), subscribed, lastError, now, now, now, cfg.mode),
     ]);
 
-    const who = `@${profile.username ?? igUserId}`;
+    const who = `@${username ?? igUserId}`;
     await log(env, { level: "info", persist: true, module: "instagram", operation: "connect", entityId: igUserId, message: `Instagram connected as ${who}` + (replaced.results.length ? ` (replaced ${replaced.results.map((r) => `@${r.username}`).join(", ")})` : "") });
     if (lastError) await log(env, { level: "warn", module: "instagram", operation: "subscribe_webhooks", entityId: igUserId, code: "subscribe_failed", message: lastError });
     return page(c, "Instagram connected", `Connected as ${who}. You can close this tab and return to AffiliateOS.` + (lastError ? " Note: the webhook subscription needs attention — see the Instagram page." : ""));

@@ -3,12 +3,20 @@ import { isValidEncryptionKey } from "../crypto";
 
 export function igConfig(env: Env, requestUrl: string) {
   const base = (env.PUBLIC_BASE_URL || new URL(requestUrl).origin).replace(/\/+$/, "");
+  const mode: "unified" | "instagram" = env.IG_LOGIN_MODE === "unified" ? "unified" : "instagram";
   const missing: string[] = [];
-  if (!env.IG_APP_ID?.trim()) missing.push("IG_APP_ID");
-  if (!env.IG_APP_SECRET) missing.push("IG_APP_SECRET");
+  if (mode === "unified") {
+    if (!env.META_APP_ID?.trim()) missing.push("META_APP_ID");
+    if (!env.FB_LOGIN_CONFIG_ID?.trim()) missing.push("FB_LOGIN_CONFIG_ID");
+    if (!env.META_APP_SECRET) missing.push("META_APP_SECRET");
+  } else {
+    if (!env.IG_APP_ID?.trim()) missing.push("IG_APP_ID");
+    if (!env.IG_APP_SECRET) missing.push("IG_APP_SECRET");
+  }
   if (!isValidEncryptionKey(env.TOKEN_ENCRYPTION_KEY)) missing.push("TOKEN_ENCRYPTION_KEY");
   if (!env.IG_WEBHOOK_VERIFY_TOKEN) missing.push("IG_WEBHOOK_VERIFY_TOKEN");
   return {
+    mode,
     base,
     version: env.IG_GRAPH_VERSION || "v27.0",
     redirectUri: `${base}/oauth/instagram/callback`,

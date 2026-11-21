@@ -132,10 +132,12 @@ export interface InstagramAccount {
   lastCheckedAt: string | null;
   lastError: string | null;
   connectedAt: string;
+  loginMode: "instagram" | "unified";
 }
 export interface InstagramStatus {
   config: {
     ready: boolean;
+    loginMode: "instagram" | "unified";
     /** Names of missing settings, e.g. IG_APP_ID, IG_APP_SECRET, TOKEN_ENCRYPTION_KEY, IG_WEBHOOK_VERIFY_TOKEN */
     missing: string[];
     graphVersion: string;

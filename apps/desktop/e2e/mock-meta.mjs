@@ -23,6 +23,15 @@ createServer(async (req, res) => {
   }
   if (path === "/access_token") return json(res, 200, { access_token: "IGAAe2e_long_token_abcdefghijklmnopqrstuvwxyz012", token_type: "bearer", expires_in: 5183944 });
   if (path === "/refresh_access_token") return json(res, 200, { access_token: "IGAAe2e_long_token_abcdefghijklmnopqrstuvwxyz012", token_type: "bearer", expires_in: 5183944 });
+  // ---- Unified login (graph.facebook.com) ----
+  if (path === "/v27.0/oauth/access_token") {
+    if (url.searchParams.get("code") !== "e2e-code" || url.searchParams.get("client_secret") !== "e2e-meta-app-secret") return json(res, 400, { error: { message: "Invalid verification code format.", type: "OAuthException", code: 100 } });
+    return json(res, 200, { access_token: "EAAe2e_system_user_token_abcdefghijklmnopqrstu", token_type: "bearer" });
+  }
+  if (path === "/v27.0/me/assigned_instagram_accounts") return json(res, 200, `{"data":[{"id":${IG_ID},"username":"e2e.creator"}]}`);
+  if (path === `/v27.0/${IG_ID}`) return json(res, 200, `{"id":${IG_ID},"username":"e2e.creator"}`);
+  if (path === `/v27.0/${IG_ID}/subscribed_apps`) return req.method === "GET" ? json(res, 200, { data: [{ subscribed_fields: ["comments"] }] }) : json(res, 200, { success: true });
+  if (path === `/v27.0/${IG_ID}/media`) return json(res, 200, { data: [{ id: "18000000000000555", caption: "E2E winter reel\nwith more text", media_type: "VIDEO", media_product_type: "REELS", permalink: "https://www.instagram.com/reel/e2e/", timestamp: "2026-11-01T10:00:00+0000" }] });
   if (path === "/v27.0/me") return json(res, 200, `{"id":"9901","user_id":${IG_ID},"username":"e2e.creator","account_type":"BUSINESS","profile_picture_url":null}`);
   if (path === "/v27.0/me/subscribed_apps") return req.method === "GET" ? json(res, 200, { data: [{ subscribed_fields: ["comments"] }] }) : json(res, 200, { success: true });
   if (path === "/v27.0/me/media") return json(res, 200, { data: [{ id: "18000000000000555", caption: "E2E winter reel\nwith more text", media_type: "VIDEO", media_product_type: "REELS", permalink: "https://www.instagram.com/reel/e2e/", timestamp: "2026-11-01T10:00:00+0000" }] });

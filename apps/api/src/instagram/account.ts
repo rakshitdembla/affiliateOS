@@ -1,6 +1,7 @@
 import type { InstagramAccount } from "@affiliateos/shared";
 import type { Env } from "../env";
 import { decryptSecret } from "../crypto";
+import { hostsFor, type Target } from "./graph";
 
 export type AccountRow = Record<string, any>;
 
@@ -25,4 +26,9 @@ export const toAccount = (a: AccountRow): InstagramAccount => ({
   lastCheckedAt: a.last_checked_at ?? null,
   lastError: a.last_error ?? null,
   connectedAt: a.connected_at,
+  loginMode: a.login_mode === "unified" ? "unified" : "instagram",
 });
+
+/** API location for account-level calls, by login mode. */
+export const targetFor = (env: Env, a: AccountRow): Target =>
+  a.login_mode === "unified" ? { host: hostsFor(env).fb, node: String(a.ig_user_id) } : { host: hostsFor(env).graph, node: "me" };

@@ -17,8 +17,9 @@ test("instagram: setup values, Connect opens the official login, a signed commen
   const opened: string[] = await page.evaluate(() => (window as any).__opened ?? []);
   expect(opened).toHaveLength(1);
   const u = new URL(opened[0]!);
-  expect(u.origin + u.pathname).toBe("https://www.instagram.com/oauth/authorize");
-  expect(u.searchParams.get("client_id")).toBe(E2E_IG.IG_APP_ID);
+  expect(u.origin + u.pathname).toBe("https://www.facebook.com/dialog/oauth");
+  expect(u.searchParams.get("client_id")).toBe(E2E_IG.META_APP_ID);
+  expect(u.searchParams.get("config_id")).toBe(E2E_IG.FB_LOGIN_CONFIG_ID);
   expect(u.searchParams.get("redirect_uri")).toBe(`${API}/oauth/instagram/callback`);
   const state = u.searchParams.get("state")!;
 
@@ -33,7 +34,7 @@ test("instagram: setup values, Connect opens the official login, a signed commen
   const hs = await api.get(`/webhooks/instagram?hub.mode=subscribe&hub.verify_token=${E2E_IG.IG_WEBHOOK_VERIFY_TOKEN}&hub.challenge=987654`);
   expect(await hs.text()).toBe("987654");
   const body = JSON.stringify({ object: "instagram", entry: [{ id: "17841400000000001", time: 1795127000, changes: [{ field: "comments", value: { from: { id: "990001", username: "e2e_shopper" }, media: { id: "18000000000000123", media_product_type: "REELS" }, id: "17900000000000777", text: "LINK please" } }] }] });
-  const sig = `sha256=${createHmac("sha256", E2E_IG.IG_APP_SECRET).update(body).digest("hex")}`;
+  const sig = `sha256=${createHmac("sha256", E2E_IG.META_APP_SECRET).update(body).digest("hex")}`;
   expect((await api.post("/webhooks/instagram", { data: body, headers: { "Content-Type": "application/json", "X-Hub-Signature-256": sig } })).status()).toBe(200);
   expect((await api.post("/webhooks/instagram", { data: body, headers: { "Content-Type": "application/json", "X-Hub-Signature-256": sig } })).status()).toBe(200);
   expect((await api.post("/webhooks/instagram", { data: body, headers: { "Content-Type": "application/json", "X-Hub-Signature-256": "sha256=" + "0".repeat(64) } })).status()).toBe(401);

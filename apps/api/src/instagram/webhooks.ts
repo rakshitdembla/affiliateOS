@@ -64,13 +64,18 @@ export async function normalizeWebhook(body: any, rawHash: string): Promise<Even
 export const webhooks = new Hono<{ Bindings: Env }>();
 
 /** Subscription verification handshake from the Meta App Dashboard. */
-webhooks.get("/webhooks/instagram", (c) => {
+webhooks.get("/webhooks/instagram", async (c) => {
   const expected = c.env.IG_WEBHOOK_VERIFY_TOKEN;
   if (!expected) return c.text("Webhook verify token is not configured", 503);
   const challenge = c.req.query("hub.challenge") ?? "";
-  if (c.req.query("hub.mode") === "subscribe" && timingSafeEqualStr(c.req.query("hub.verify_token") ?? "", expected) && challenge && challenge.length <= 200) {
+  const given = c.req.query("hub.verify_token") ?? "";
+  if (c.req.query("hub.mode") === "subscribe" && timingSafeEqualStr(given, expected) && challenge && challenge.length <= 200) {
+    await log(c.env, { level: "info", persist: true, module: "webhook", operation: "verify", message: "Meta webhook subscription verified" });
     return c.text(challenge, 200);
   }
+  // Describe the mismatch without revealing either token.
+  await logThrottled(c.env, { level: "warn", module: "webhook", operation: "verify", code: "verify_token_mismatch",
+    message: `Webhook verification refused: mode=${c.req.query("hub.mode") ?? "missing"}, token length ${given.length} (expected ${expected.length})${/\s/.test(given) ? ", contains whitespace" : ""}${/[^0-9a-f]/.test(given) ? ", contains non-hex characters" : ""}` }, 2);
   return c.text("Forbidden", 403);
 });
 

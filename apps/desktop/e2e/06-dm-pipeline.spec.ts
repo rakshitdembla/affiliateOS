@@ -8,7 +8,7 @@ let n = 0;
 async function comment(api: APIRequestContext, text: string, o: { from: string; username: string; id?: string }) {
   const id = o.id ?? `1790000000009${String(++n).padStart(4, "0")}`;
   const body = JSON.stringify({ object: "instagram", entry: [{ id: "17841400000000077", time: 1795127000, changes: [{ field: "comments", value: { id, text, from: { id: o.from, username: o.username }, media: { id: MEDIA, media_product_type: "REELS" } } }] }] });
-  const sig = `sha256=${createHmac("sha256", E2E_IG.IG_APP_SECRET).update(body).digest("hex")}`;
+  const sig = `sha256=${createHmac("sha256", E2E_IG.META_APP_SECRET).update(body).digest("hex")}`;
   expect((await api.post("/webhooks/instagram", { data: body, headers: { "Content-Type": "application/json", "X-Hub-Signature-256": sig } })).status()).toBe(200);
   return id;
 }
@@ -67,7 +67,7 @@ test("comment → queued job → Mac engine sends exactly one private reply thro
   const sent = await sends(api);
   expect(sent.filter((s) => s.commentId === ok)).toHaveLength(1);
   expect(sent.find((s) => s.commentId === ok)!.text).toBe(`Hey @e2e_fan! Here are the outfits you were looking for 👇\n\n${API}/c/${col.slug}?s=instagram`);
-  expect(sent.find((s) => s.commentId === ok)!.auth).toBe("Bearer IGAAe2e_long_token_abcdefghijklmnopqrstuvwxyz012");
+  expect(sent.find((s) => s.commentId === ok)!.auth).toBe("Bearer EAAe2e_system_user_token_abcdefghijklmnopqrstu");
   expect(sent.some((s) => s.commentId === dup)).toBe(false);
   expect((await statusOf(api, bad)).errorCode).toBe("recipient_not_found");
   await page.reload();

@@ -17,10 +17,10 @@ import { Instagram } from "../pages/Instagram";
 
 const m = api as unknown as Record<string, ReturnType<typeof vi.fn>>;
 const base = (o: Partial<InstagramStatus> = {}): InstagramStatus => ({
-  config: { ready: true, missing: [], graphVersion: "v27.0", metaSecretConfigured: false, redirectUri: "https://x.dev/oauth/instagram/callback", webhookUrl: "https://x.dev/webhooks/instagram", privacyUrl: "https://x.dev/privacy", deauthorizeUrl: "https://x.dev/oauth/instagram/deauthorize", dataDeletionUrl: "https://x.dev/oauth/instagram/data-deletion" },
+  config: { ready: true, loginMode: "instagram", missing: [], graphVersion: "v27.0", metaSecretConfigured: false, redirectUri: "https://x.dev/oauth/instagram/callback", webhookUrl: "https://x.dev/webhooks/instagram", privacyUrl: "https://x.dev/privacy", deauthorizeUrl: "https://x.dev/oauth/instagram/deauthorize", dataDeletionUrl: "https://x.dev/oauth/instagram/data-deletion" },
   account: null, webhooks: { total: 0, last24h: 0, lastReceivedAt: null, lastSignatureKey: null }, ...o,
 });
-const connected = (): InstagramStatus => base({ account: { igUserId: "1784", username: "trendism.in", accountType: "BUSINESS", profilePictureUrl: null, status: "connected", scopes: ["instagram_business_basic"], tokenExpiresAt: new Date(Date.now() + 45 * 86_400_000).toISOString(), tokenRefreshedAt: new Date().toISOString(), webhooksSubscribed: true, lastCheckedAt: null, lastError: null, connectedAt: new Date().toISOString() } });
+const connected = (): InstagramStatus => base({ account: { igUserId: "1784", username: "trendism.in", accountType: "BUSINESS", profilePictureUrl: null, status: "connected", scopes: ["instagram_business_basic"], tokenExpiresAt: new Date(Date.now() + 45 * 86_400_000).toISOString(), tokenRefreshedAt: new Date().toISOString(), webhooksSubscribed: true, lastCheckedAt: null, lastError: null, connectedAt: new Date().toISOString(), loginMode: "instagram" } });
 const wrap = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><Instagram /></MemoryRouter></QueryClientProvider>);
 
 beforeEach(() => {
@@ -40,6 +40,23 @@ describe("Instagram page", () => {
     expect(screen.getAllByLabelText("configured")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "Connect Instagram" })).toBeDisabled();
     expect(screen.getByText("https://x.dev/webhooks/instagram")).toBeInTheDocument();
+  });
+
+  it("Unified login: shows the Meta setup checklist and a non-expiring token without a refresh button", async () => {
+    const st = connected();
+    st.config = { ...st.config, loginMode: "unified" };
+    st.account = { ...st.account!, loginMode: "unified", tokenExpiresAt: null };
+    m.instagramStatus.mockResolvedValue(st);
+    wrap();
+    expect(await screen.findByText("Doesn't expire")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Refresh token" })).toBeNull();
+  });
+
+  it("Unified login checklist names the Meta settings", async () => {
+    m.instagramStatus.mockResolvedValue(base({ config: { ...base().config, loginMode: "unified", ready: false, missing: ["META_APP_SECRET"] } }));
+    wrap();
+    expect(await screen.findByRole("list", { name: "Setup checklist" })).toHaveTextContent("Meta App Secret");
+    expect(screen.getAllByLabelText("missing")).toHaveLength(1);
   });
 
   it("Connect opens the official login in the browser and waits", async () => {

@@ -8,6 +8,9 @@ declare namespace Cloudflare {
     ADMIN_API_TOKEN?: string;
     PUBLIC_BASE_URL?: string;
     IG_APP_ID?: string;
+    IG_LOGIN_MODE?: string;
+    META_APP_ID?: string;
+    FB_LOGIN_CONFIG_ID?: string;
     IG_GRAPH_VERSION?: string;
     IG_GRAPH_BASE?: string;
     PRIVACY_CONTACT?: string;

@@ -9,11 +9,20 @@ import { Button } from "../components/ui/button";
 import { ConfirmDialog } from "../components/Dialog";
 import { ExternalLink } from "../components/ExternalLink";
 
-const SETTING_HELP: Record<string, string> = {
-  IG_APP_ID: "Instagram App ID — public; goes in wrangler.jsonc",
-  IG_APP_SECRET: "Instagram App Secret — Worker secret (wrangler secret put IG_APP_SECRET)",
-  TOKEN_ENCRYPTION_KEY: "Token encryption key — Worker secret",
-  IG_WEBHOOK_VERIFY_TOKEN: "Webhook verify token — Worker secret",
+const SETTING_HELP: Record<"unified" | "instagram", Record<string, string>> = {
+  unified: {
+    META_APP_ID: "Meta App ID — public; goes in wrangler.jsonc",
+    FB_LOGIN_CONFIG_ID: "Facebook Login for Business configuration ID — public; wrangler.jsonc",
+    META_APP_SECRET: "Meta App Secret — Worker secret (wrangler secret put META_APP_SECRET)",
+    TOKEN_ENCRYPTION_KEY: "Token encryption key — Worker secret",
+    IG_WEBHOOK_VERIFY_TOKEN: "Webhook verify token — Worker secret",
+  },
+  instagram: {
+    IG_APP_ID: "Instagram App ID — public; goes in wrangler.jsonc",
+    IG_APP_SECRET: "Instagram App Secret — Worker secret (wrangler secret put IG_APP_SECRET)",
+    TOKEN_ENCRYPTION_KEY: "Token encryption key — Worker secret",
+    IG_WEBHOOK_VERIFY_TOKEN: "Webhook verify token — Worker secret",
+  },
 };
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : "—");
 const daysLeft = (iso: string | null) => (iso ? Math.ceil((Date.parse(iso) - Date.now()) / 86_400_000) : null);
@@ -35,7 +44,7 @@ function MetaSettings({ s }: { s: InstagramStatus }) {
   return (
     <Card>
       <div className="text-sm font-medium">Meta App Dashboard values</div>
-      <p className="mt-1 text-xs text-muted">Paste these into your Meta app (Instagram → API setup with Instagram login). Graph API {s.config.graphVersion}.</p>
+      <p className="mt-1 text-xs text-muted">Paste these into your Meta app ({s.config.loginMode === "unified" ? "Facebook Login for Business settings, login configuration and Webhooks" : "Instagram → API setup with Instagram login"}). Graph API {s.config.graphVersion}.</p>
       <div className="mt-2 divide-y divide-border">
         <CopyField label="OAuth redirect URI" value={s.config.redirectUri} />
         <CopyField label="Webhook callback URL" value={s.config.webhookUrl} />
@@ -173,12 +182,12 @@ export function Instagram() {
         <Card className="border-amber-200">
           <div className="flex items-center gap-2 text-sm font-medium"><AlertTriangle size={16} className="text-warn" aria-hidden /> Finish the server setup</div>
           <ul className="mt-3 space-y-1.5 text-sm" aria-label="Setup checklist">
-            {Object.keys(SETTING_HELP).map((k) => {
+            {Object.keys(SETTING_HELP[s.config.loginMode ?? "instagram"]).map((k) => {
               const missing = s.config.missing.includes(k);
               return (
                 <li key={k} className="flex items-center gap-2">
                   {missing ? <X size={14} className="text-bad" aria-label="missing" /> : <Check size={14} className="text-ok" aria-label="configured" />}
-                  <span className={missing ? "" : "text-muted"}>{SETTING_HELP[k]}</span>
+                  <span className={missing ? "" : "text-muted"}>{SETTING_HELP[s.config.loginMode ?? "instagram"][k]}</span>
                 </li>
               );
             })}
@@ -193,7 +202,7 @@ export function Instagram() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-medium">No account connected</div>
-                <p className="mt-0.5 text-sm text-muted">{waitingSince ? "Finish signing in to Instagram in your browser — this page updates automatically." : "Connect the Instagram professional account you post reels from."}</p>
+                <p className="mt-0.5 text-sm text-muted">{waitingSince ? "Finish signing in to Instagram in your browser — this page updates automatically." : s.config.loginMode === "unified" ? "Sign in with Meta in your browser and share the Instagram professional account you post reels from." : "Connect the Instagram professional account you post reels from."}</p>
               </div>
               <div className="flex gap-2">
                 {waitingSince && <Button variant="ghost" onClick={() => setWaitingSince(null)}>Stop waiting</Button>}
@@ -214,17 +223,17 @@ export function Instagram() {
                 <div className="flex flex-wrap gap-2">
                   {a.status !== "connected" && <Button onClick={() => connect.mutate()} disabled={busy || !s.config.ready}>Reconnect</Button>}
                   <Button variant="outline" size="sm" onClick={() => check.mutate()} disabled={busy}><RefreshCw size={13} className={check.isPending ? "animate-spin" : ""} /> Check connection</Button>
-                  <Button variant="outline" size="sm" onClick={() => refresh.mutate()} disabled={busy}>Refresh token</Button>
+                  {a.loginMode !== "unified" && <Button variant="outline" size="sm" onClick={() => refresh.mutate()} disabled={busy}>Refresh token</Button>}
                   <Button variant="ghost" size="sm" className="text-bad" onClick={() => setConfirmDisconnect(true)} disabled={busy}>Disconnect</Button>
                 </div>
               </div>
               <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-                <div className="flex justify-between"><dt className="text-muted">Token valid until</dt><dd className={left !== null && left < 7 ? "text-bad" : ""}>{a.tokenExpiresAt ? `${new Date(a.tokenExpiresAt).toLocaleDateString()} (${left} days)` : "—"}</dd></div>
+                <div className="flex justify-between"><dt className="text-muted">Token valid until</dt><dd className={left !== null && left < 7 ? "text-bad" : ""}>{a.tokenExpiresAt ? `${new Date(a.tokenExpiresAt).toLocaleDateString()} (${left} days)` : a.loginMode === "unified" ? "Doesn't expire" : "—"}</dd></div>
                 <div className="flex justify-between"><dt className="text-muted">Token last refreshed</dt><dd>{fmt(a.tokenRefreshedAt)}</dd></div>
                 <div className="flex justify-between"><dt className="text-muted">Last checked</dt><dd>{fmt(a.lastCheckedAt)}</dd></div>
                 <div className="flex justify-between"><dt className="text-muted">Comment webhooks</dt><dd>{a.webhooksSubscribed ? <span className="text-ok">Subscribed</span> : <Button variant="outline" size="sm" onClick={() => subscribe.mutate()} disabled={busy}>Subscribe</Button>}</dd></div>
               </dl>
-              <p className="text-xs text-muted">Tokens are refreshed automatically by a daily Cloudflare job when fewer than 20 days remain. Permissions granted: {a.scopes.join(", ") || "—"}.</p>
+              <p className="text-xs text-muted">{a.loginMode === "unified" ? "Connected with Meta Unified login (system-user token owned by your business portfolio)." : "Tokens are refreshed automatically by a daily Cloudflare job when fewer than 20 days remain."} Permissions granted: {a.scopes.join(", ") || "—"}.</p>
               {a.lastError && <p role="alert" className="rounded-md bg-amber-50 p-2 text-sm text-warn">{a.lastError}</p>}
             </div>
           )}

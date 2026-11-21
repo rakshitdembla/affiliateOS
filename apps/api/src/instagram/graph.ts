@@ -48,8 +48,10 @@ async function call<T = any>(url: string, init: RequestInit = {}): Promise<T> {
   return body as T;
 }
 
-export interface Hosts { graph: string; oauth: string }
-export const OFFICIAL_HOSTS: Hosts = { graph: "https://graph.instagram.com", oauth: "https://api.instagram.com" };
+export interface Hosts { graph: string; oauth: string; fb: string }
+export const OFFICIAL_HOSTS: Hosts = { graph: "https://graph.instagram.com", oauth: "https://api.instagram.com", fb: "https://graph.facebook.com" };
+/** Where account-level calls go: Instagram Login → graph.instagram.com/…/me; Unified login → graph.facebook.com/…/<IG account id>. */
+export interface Target { host: string; node: string }
 
 /**
  * Test seam for end-to-end tests: IG_GRAPH_BASE may point at a local mock, but only loopback URLs are honoured,
@@ -57,7 +59,7 @@ export const OFFICIAL_HOSTS: Hosts = { graph: "https://graph.instagram.com", oau
  */
 export function hostsFor(env: { IG_GRAPH_BASE?: string }): Hosts {
   const o = env.IG_GRAPH_BASE?.trim().replace(/\/+$/, "");
-  return o && /^http:\/\/(localhost|127\.0\.0\.1):\d{2,5}$/.test(o) ? { graph: o, oauth: o } : OFFICIAL_HOSTS;
+  return o && /^http:\/\/(localhost|127\.0\.0\.1):\d{2,5}$/.test(o) ? { graph: o, oauth: o, fb: o } : OFFICIAL_HOSTS;
 }
 const withParams = (base: string, params: Record<string, string | undefined>): string => {
   const u = new URL(base);
@@ -107,13 +109,13 @@ export async function getProfile(h: Hosts, token: string, version: string): Prom
   };
 }
 
-export async function subscribeWebhooks(h: Hosts, token: string, version: string, fields: string[]): Promise<void> {
-  const b = await call(withParams(`${h.graph}/${version}/me/subscribed_apps`, { subscribed_fields: fields.join(","), access_token: token }), { method: "POST" });
+export async function subscribeWebhooks(t: Target, token: string, version: string, fields: string[]): Promise<void> {
+  const b = await call(withParams(`${t.host}/${version}/${t.node}/subscribed_apps`, { subscribed_fields: fields.join(","), access_token: token }), { method: "POST" });
   if (b?.success !== true) throw new GraphError("unknown", "Instagram did not confirm the webhook subscription");
 }
 
-export async function getSubscribedFields(h: Hosts, token: string, version: string): Promise<string[]> {
-  const b = await call(withParams(`${h.graph}/${version}/me/subscribed_apps`, { access_token: token }));
+export async function getSubscribedFields(t: Target, token: string, version: string): Promise<string[]> {
+  const b = await call(withParams(`${t.host}/${version}/${t.node}/subscribed_apps`, { access_token: token }));
   const fields = new Set<string>();
   for (const app of Array.isArray(b?.data) ? b.data : []) {
     const f = app?.subscribed_fields;
@@ -122,14 +124,14 @@ export async function getSubscribedFields(h: Hosts, token: string, version: stri
   return [...fields].filter(Boolean);
 }
 
-export async function unsubscribeWebhooks(h: Hosts, token: string, version: string): Promise<void> {
-  await call(withParams(`${h.graph}/${version}/me/subscribed_apps`, { access_token: token }), { method: "DELETE" });
+export async function unsubscribeWebhooks(t: Target, token: string, version: string): Promise<void> {
+  await call(withParams(`${t.host}/${version}/${t.node}/subscribed_apps`, { access_token: token }), { method: "DELETE" });
 }
 
 export interface MediaItem { id: string; caption: string | null; mediaType: string | null; mediaProductType: string | null; permalink: string | null; thumbnailUrl: string | null; timestamp: string | null }
 
-export async function listMedia(h: Hosts, token: string, version: string, o: { after?: string; limit?: number } = {}) {
-  const b = await call(withParams(`${h.graph}/${version}/me/media`, {
+export async function listMedia(t: Target, token: string, version: string, o: { after?: string; limit?: number } = {}) {
+  const b = await call(withParams(`${t.host}/${version}/${t.node}/media`, {
     fields: "id,caption,media_type,media_product_type,permalink,thumbnail_url,media_url,timestamp",
     limit: String(Math.min(Math.max(o.limit ?? 24, 1), 50)), after: o.after, access_token: token,
   }));
@@ -159,10 +161,10 @@ function regainSeconds(res: Response): number | null {
 }
 
 /** Private reply to a comment (Meta: POST /<IG_ID>/messages with recipient.comment_id; one reply per comment, within 7 days). */
-export async function sendPrivateReply(h: Hosts, o: { token: string; version: string; igUserId: string; commentId: string; text: string; timeoutMs?: number }): Promise<SendResult> {
+export async function sendPrivateReply(t: Target, o: { token: string; version: string; igUserId: string; commentId: string; text: string; timeoutMs?: number }): Promise<SendResult> {
   let res: Response;
   try {
-    res = await fetch(`${h.graph}/${o.version}/${encodeURIComponent(o.igUserId)}/messages`, {
+    res = await fetch(`${t.host}/${o.version}/${encodeURIComponent(o.igUserId)}/messages`, {
       method: "POST",
       headers: { Authorization: `Bearer ${o.token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ recipient: { comment_id: o.commentId }, message: { text: o.text } }),
@@ -185,11 +187,11 @@ export interface ConversationMessage { id: string; createdTime: number | null; f
  * Conversations API (Meta): find the conversation with a person by Instagram-scoped id, then read recent messages.
  * Only the 20 most recent messages' details are available. Used to check whether an uncertain reply was delivered.
  */
-export async function recentMessagesWith(h: Hosts, o: { token: string; version: string; userId: string; since: number }): Promise<{ messages: ConversationMessage[]; truncated: boolean } | "no_conversation"> {
-  const conv = await call(withParams(`${h.graph}/${o.version}/me/conversations`, { platform: "instagram", user_id: o.userId, access_token: o.token }));
+export async function recentMessagesWith(t: Target, o: { token: string; version: string; userId: string; since: number }): Promise<{ messages: ConversationMessage[]; truncated: boolean } | "no_conversation"> {
+  const conv = await call(withParams(`${t.host}/${o.version}/${t.node}/conversations`, { platform: "instagram", user_id: o.userId, access_token: o.token }));
   const convId = Array.isArray(conv?.data) && conv.data[0]?.id ? String(conv.data[0].id) : null;
   if (!convId) return "no_conversation";
-  const list = await call(withParams(`${h.graph}/${o.version}/${encodeURIComponent(convId)}`, { fields: "messages", access_token: o.token }));
+  const list = await call(withParams(`${t.host}/${o.version}/${encodeURIComponent(convId)}`, { fields: "messages", access_token: o.token }));
   const toTime = (t: unknown): number | null => (t == null ? null : /^\d+$/.test(String(t)) ? Number(t) * 1000 : Date.parse(String(t)) || null);
   const recent = (Array.isArray(list?.messages?.data) ? list.messages.data : [])
     .map((m: any) => ({ id: String(m.id), t: toTime(m.created_time) }))
@@ -197,9 +199,45 @@ export async function recentMessagesWith(h: Hosts, o: { token: string; version: 
   const ids = recent.slice(0, 20);
   const out: ConversationMessage[] = [];
   for (const m of ids) {
-    const d = await call(withParams(`${h.graph}/${o.version}/${encodeURIComponent(m.id)}`, { fields: "id,created_time,from,to,message", access_token: o.token }));
+    const d = await call(withParams(`${t.host}/${o.version}/${encodeURIComponent(m.id)}`, { fields: "id,created_time,from,to,message", access_token: o.token }));
     out.push({ id: String(d.id ?? m.id), createdTime: toTime(d.created_time) ?? m.t, fromId: d.from?.id != null ? String(d.from.id) : null, fromUsername: d.from?.username ?? null, text: typeof d.message === "string" ? d.message : null });
     await new Promise((r) => setTimeout(r, 500)); // Conversations API: 2 calls/second per account
   }
   return { messages: out, truncated: recent.length > 20 };
+}
+
+// ---------------- Unified login (Facebook Login for Business) ----------------
+export const UNIFIED_SCOPES = ["instagram_basic", "instagram_manage_comments", "instagram_manage_messages"];
+
+/** Facebook Login for Business dialog for a login configuration (config_id defines permissions, assets and token type). */
+export function unifiedAuthorizeUrl(o: { appId: string; configId: string; redirectUri: string; state: string }): string {
+  return withParams("https://www.facebook.com/dialog/oauth", {
+    client_id: o.appId, config_id: o.configId, redirect_uri: o.redirectUri, response_type: "code", state: o.state,
+  });
+}
+
+/** Code → Business Integration System User access token (graph.facebook.com, Meta app id/secret). */
+export async function exchangeCodeUnified(h: Hosts, o: { appId: string; appSecret: string; redirectUri: string; code: string; version: string }) {
+  const b = await call(withParams(`${h.fb}/${o.version}/oauth/access_token`, { client_id: o.appId, client_secret: o.appSecret, redirect_uri: o.redirectUri, code: o.code }));
+  if (!b?.access_token) throw new GraphError("unknown", "Unexpected token response from Meta");
+  const expiresIn = Number(b.expires_in) || 0;
+  return { accessToken: String(b.access_token), expiresIn };
+}
+
+export interface IgAccount { id: string; username: string | null; profilePictureUrl: string | null }
+
+/** Instagram professional accounts the login shared with the app (Unified login: /me is the system user, not the account). */
+export async function assignedInstagramAccounts(h: Hosts, token: string, version: string): Promise<IgAccount[]> {
+  let b: any;
+  try { b = await call(withParams(`${h.fb}/${version}/me/assigned_instagram_accounts`, { fields: "id,username,profile_picture_url", access_token: token })); }
+  catch (e) {
+    if (!(e instanceof GraphError) || e.kind !== "invalid_request") throw e;
+    b = await call(withParams(`${h.fb}/${version}/me/assigned_instagram_accounts`, { access_token: token })); // field list not supported here
+  }
+  return (Array.isArray(b?.data) ? b.data : []).filter((a: any) => a?.id != null).map((a: any) => ({ id: String(a.id), username: a.username ?? null, profilePictureUrl: a.profile_picture_url ?? null }));
+}
+
+export async function getIgAccount(h: Hosts, token: string, version: string, igId: string): Promise<IgAccount> {
+  const b = await call(withParams(`${h.fb}/${version}/${encodeURIComponent(igId)}`, { fields: "id,username,profile_picture_url", access_token: token }));
+  return { id: String(b.id ?? igId), username: b.username ?? null, profilePictureUrl: b.profile_picture_url ?? null };
 }

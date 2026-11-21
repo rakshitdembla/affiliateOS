@@ -7,8 +7,14 @@ export interface Env {
   ALLOWED_ORIGINS: string;
   /** Public origin used for OAuth redirect/webhook URLs, e.g. https://affiliateos-api.<account>.workers.dev */
   PUBLIC_BASE_URL?: string;
-  /** Instagram App ID (public). */
+  /** "unified" (Facebook Login for Business — required for apps created since 2026) or "instagram" (Instagram Login). */
+  IG_LOGIN_MODE?: string;
+  /** Instagram App ID (public; Instagram Login mode). */
   IG_APP_ID?: string;
+  /** Meta App ID (public; Unified login mode). */
+  META_APP_ID?: string;
+  /** Facebook Login for Business configuration id (public; Unified login mode). */
+  FB_LOGIN_CONFIG_ID?: string;
   IG_GRAPH_VERSION?: string;
   /** E2E test seam only: loopback URL of a mock Instagram API (ignored unless http://localhost:<port>). */
   IG_GRAPH_BASE?: string;

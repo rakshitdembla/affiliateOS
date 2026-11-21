@@ -14,6 +14,8 @@ To reproduce on a new account (requires `wrangler login`):
 
 ## Instagram setup (Phase 4)
 
+> **Update (v1.1.0):** Meta no longer offers "API setup with Instagram login" to new apps. This deployment uses **Unified login**: Meta App ID `1612067306883077`, Facebook Login for Business configuration `1599197921970843` (system-user token, never expires), business portfolio "Affiliateos". Secret needed: `META_APP_SECRET` (App settings → Basic). Redirect, deauthorize and data-deletion URLs are set under Facebook Login for Business → Settings. The steps below describe the older Instagram Login variant.
+
 Already done on the server: migration `0005`, Worker secrets `TOKEN_ENCRYPTION_KEY` and `IG_WEBHOOK_VERIFY_TOKEN` (generated, never displayed), daily token-refresh cron (`17 3 * * *` UTC).
 
 Requirements: an Instagram **professional** account (Business or Creator). Comment webhooks are only delivered for **public** accounts.

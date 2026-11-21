@@ -35,7 +35,10 @@ export const compliance = new Hono<{ Bindings: Env }>();
 compliance.post("/oauth/instagram/deauthorize", async (c) => {
   const userId = await signedUserId(c);
   if (!userId) return c.json({ error: { code: "invalid_signed_request", message: "Invalid signed_request" } }, 400);
-  const r = await c.env.DB.prepare("DELETE FROM instagram_accounts WHERE ig_user_id = ? OR app_scoped_id = ?").bind(userId, userId).run();
+  let r = await c.env.DB.prepare("DELETE FROM instagram_accounts WHERE ig_user_id = ? OR app_scoped_id = ?").bind(userId, userId).run();
+  // Unified login: the signed request names the Facebook user who removed the app, not the Instagram account.
+  // This is a single-account app, so a verified removal disconnects the Unified login connection.
+  if (r.meta.changes === 0) r = await c.env.DB.prepare("DELETE FROM instagram_accounts WHERE login_mode = 'unified'").run();
   await log(c.env, { level: "warn", module: "instagram", operation: "deauthorize", code: "app_removed", message: `Instagram app access was removed by the account owner; ${r.meta.changes} stored account(s) and token(s) deleted` });
   return c.json({ success: true });
 });
@@ -47,7 +50,7 @@ compliance.post("/oauth/instagram/data-deletion", async (c) => {
   const code = randomToken(12);
   const now = new Date().toISOString();
   await c.env.DB.batch([
-    c.env.DB.prepare("DELETE FROM instagram_accounts WHERE ig_user_id = ? OR app_scoped_id = ?").bind(userId, userId),
+    c.env.DB.prepare("DELETE FROM instagram_accounts WHERE ig_user_id = ? OR app_scoped_id = ? OR login_mode = 'unified'").bind(userId, userId),
     c.env.DB.prepare("INSERT INTO data_deletion_requests (code, requested_at, completed_at) VALUES (?, ?, ?)").bind(code, now, now),
   ]);
   await log(c.env, { level: "warn", module: "instagram", operation: "data_deletion", entityId: code, code: "data_deletion", message: "Data deletion request processed; stored Instagram account data deleted" });

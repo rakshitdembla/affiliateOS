@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0 — Meta Unified login
+- Meta no longer lets new apps use Instagram Login; added **Unified login** (Facebook Login for Business with a login configuration, graph.facebook.com, Meta app secret, non-expiring system-user token owned by the business portfolio). Instagram Login remains supported for existing apps (`IG_LOGIN_MODE`). Migration 0008 (`login_mode`).
+- Webhook handshake failures are logged with a diagnosis (length/whitespace/charset) without revealing tokens.
+- Tests: API 171, desktop 42, E2E 11 (pipeline now runs through Unified login against the mock).
+
 ## 1.0.0 — Phase 7 (production hardening)
 - Security review (see SECURITY.md): per-IP rate limit on public analytics writes, throttled failed-auth logging, HSTS/Permissions-Policy/COOP headers, preview URLs disabled; dependency audit clean after migrating tests to `@cloudflare/vitest-plugin`; git history secret scan clean.
 - Backups: daily gzipped snapshot of all tables to R2 (14 kept) plus "Back up now"; `scripts/backup-to-sql.mjs` restore tool; restore drill passed. D1 Time Travel documented as the primary restore.

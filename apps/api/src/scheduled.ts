@@ -17,6 +17,7 @@ export async function refreshDueTokens(env: Env, now = new Date()): Promise<{ ch
   if (!isValidEncryptionKey(env.TOKEN_ENCRYPTION_KEY)) return out;
   const { results } = await env.DB.prepare("SELECT * FROM instagram_accounts WHERE status = 'connected'").all<Record<string, any>>();
   for (const a of results) {
+    if (a.login_mode === "unified" && !a.token_expires_at) continue; // non-expiring system-user token
     out.checked++;
     const expires = a.token_expires_at ? Date.parse(a.token_expires_at) : NaN;
     const issued = Date.parse(a.token_refreshed_at ?? a.connected_at);
@@ -26,6 +27,7 @@ export async function refreshDueTokens(env: Env, now = new Date()): Promise<{ ch
       out.failed++;
       continue;
     }
+    if (a.login_mode === "unified") continue; // expiring Unified tokens are renewed by reconnecting (warned in System health)
     const due = !Number.isFinite(expires) || expires - now.getTime() < REFRESH_WITHIN_DAYS * DAY;
     if (!due || now.getTime() - issued < DAY) continue;
     try {

@@ -346,6 +346,12 @@ describe("Meta compliance callbacks", () => {
     expect((await pub("/oauth/instagram/deletion-status?code=nope-nope-nope")).status).toBe(404);
   });
 
+  it("serves a terms of service page", async () => {
+    const res = await pub("/terms");
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("Terms of Service");
+  });
+
   it("serves a privacy policy page", async () => {
     const res = await pub("/privacy");
     expect(res.status).toBe(200);

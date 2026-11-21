@@ -82,3 +82,17 @@ compliance.get("/privacy", (c) => {
 </main></body></html>`;
   return c.html(body, 200, { ...htmlHeaders, "Cache-Control": "public, max-age=3600" });
 });
+
+compliance.get("/terms", (c) => {
+  const contact = c.env.PRIVACY_CONTACT || "a direct message to the Instagram account that operates this service";
+  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Terms of Service</title>
+<style>body{margin:0;background:#fff;color:#1c1917;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}main{max-width:720px;margin:0 auto;padding:48px 20px}h1{font:400 34px/1.2 Georgia,serif}h2{font-size:18px;margin-top:32px}small{color:#78716c}</style></head><body><main>
+<h1>Terms of Service</h1><small>Last updated: 2026-11-22</small>
+<p>AffiliateOS is a private tool operated by a single Instagram creator. It publishes shopping collections and, when you comment a keyword such as “LINK” on one of the creator's reels, sends you that collection's link in one private reply through Instagram's official messaging features.</p>
+<h2>Using the service</h2><p>Collection pages are free to view. Product links lead to third-party retailers (for example Amazon, Myntra and Meesho); purchases, prices, availability, delivery and returns are governed entirely by those retailers. As an affiliate, the operator may earn a commission on purchases made through these links at no extra cost to you.</p>
+<h2>Messages</h2><p>You receive at most one automatic reply per comment, and only when your comment asks for the link. You can stop further messages by not commenting the keyword, by restricting the account in Instagram, or by asking for your data to be deleted (see the Privacy Policy).</p>
+<h2>No warranty</h2><p>Information such as prices is collected from retailers and may be out of date. The service is provided “as is”, without warranties, and the operator is not liable for retailer products or transactions.</p>
+<h2>Changes and contact</h2><p>These terms may be updated; the date above changes when they are. Questions: ${esc(contact)}. See also the <a href="/privacy">Privacy Policy</a>.</p>
+</main></body></html>`;
+  return c.html(body, 200, { ...htmlHeaders, "Cache-Control": "public, max-age=3600" });
+});

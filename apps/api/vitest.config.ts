@@ -12,6 +12,7 @@ export default defineConfig(async () => {
             TEST_MIGRATIONS: migrations,
             ADMIN_API_TOKEN: "test-token",
             PUBLIC_BASE_URL: "https://aos.example",
+            IG_LOGIN_MODE: "instagram",
             IG_APP_ID: "1234567890",
             IG_APP_SECRET: "test-ig-app-secret",
             META_APP_SECRET: "test-meta-app-secret",
